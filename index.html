@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Planificador de Viajes</title>
+    <title>Viaje en Autocaravana 🚐</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -22,29 +22,38 @@
             <div class="p-3 bg-primary text-white d-flex justify-content-between align-items-center">
                 <h5 class="m-0"><i class="fa-solid fa-route"></i> Planificador</h5>
                 <div>
-                    <button class="btn btn-sm btn-outline-light me-1" onclick="generateShareLink()" title="Copiar enlace">
+                    <button class="btn btn-sm btn-outline-light" onclick="resetAllData()" title="Borrar todo">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-light ms-1" onclick="generateShareLink()" title="Copiar enlace">
                         <i class="fa-solid fa-share-nodes"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-light" onclick="exportData()" title="Descargar JSON">
-                        <i class="fa-solid fa-download"></i>
-                    </button>
-                    <label class="btn btn-sm btn-outline-light mb-0" title="Cargar JSON">
-                        <i class="fa-solid fa-upload"></i> <input type="file" id="importFile" hidden onchange="importData(this)">
-                    </label>
                 </div>
             </div>
 
-            <div class="flex-grow-1 overflow-auto p-3" id="stages-container">
-                <div id="stages-list" class="accordion"></div>
-                <button class="btn btn-outline-primary w-100 mt-3" onclick="createNewStage()">
+            <div class="flex-grow-1 overflow-auto p-3" id="sidebar-content">
+                <h6 class="text-muted text-uppercase small fw-bold mb-2">
+                    <i class="fa-solid fa-road"></i> Etapas
+                </h6>
+                <div id="stages-list" class="accordion mb-4"></div>
+                <button class="btn btn-outline-primary w-100 mb-4" onclick="createNewStage()">
                     <i class="fa-solid fa-plus"></i> Nueva Etapa
                 </button>
+
+                <h6 class="text-muted text-uppercase small fw-bold mb-2">
+                    <i class="fa-solid fa-map-pin"></i> Puntos de Interés (POIs)
+                </h6>
+                <div id="pois-sidebar-list" class="list-group">
+                    </div>
+                <p id="no-pois-msg" class="text-muted small fst-italic mt-2 text-center">
+                    Haz clic en el mapa para añadir puntos.
+                </p>
             </div>
 
-            <div class="p-3 bg-white border-top">
-                <div class="d-flex justify-content-between">
-                    <strong>Total Kilómetros:</strong>
-                    <span id="total-km">0 km</span>
+            <div class="p-3 bg-white border-top shadow-sm">
+                <div class="d-flex justify-content-between align-items-center">
+                    <strong>Total Viaje:</strong>
+                    <span id="total-km" class="badge bg-success fs-6">0 km</span>
                 </div>
             </div>
         </div>
@@ -62,22 +71,37 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">¿Qué quieres hacer aquí?</h5>
+        <h5 class="modal-title">¿Qué hay aquí?</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body text-center">
-        <p id="modal-address-preview" class="text-muted small">Cargando...</p>
+        <p id="modal-address-preview" class="text-muted small mb-3">Cargando...</p>
         <div class="d-grid gap-2">
             <button class="btn btn-primary" onclick="addCurrentLocToStage()">
-                <i class="fa-solid fa-route"></i> Añadir a Etapa Activa
+                <i class="fa-solid fa-route"></i> Añadir a la Ruta
             </button>
-            <button class="btn btn-success" onclick="addCurrentLocAsPOI()">
-                <i class="fa-solid fa-star"></i> Guardar como Interés
+            <button class="btn btn-warning text-dark" onclick="addCurrentLocAsPOI()">
+                <i class="fa-solid fa-star"></i> Crear Punto de Interés
             </button>
         </div>
       </div>
     </div>
   </div>
+</div>
+
+<div class="modal fade" id="stickerModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h6 class="modal-title">Elige un icono</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body sticker-scroll-body">
+            <div class="d-flex flex-wrap gap-2 justify-content-center" id="sticker-grid">
+                </div>
+        </div>
+      </div>
+    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -86,7 +110,8 @@
 <script src="js/L.Routing.OpenRouteServiceV2.js"></script>
 <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script> 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
+<script src="js/stickers.js"></script>
 <script src="js/app.js"></script>
 
 </body>
