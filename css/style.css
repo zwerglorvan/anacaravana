@@ -33,6 +33,111 @@ html, body {
     cursor: grabbing;
 }
 
+/* =========================================================
+   ESTILOS NUEVOS PARA LA CABECERA SOFISTICADA
+   ========================================================= */
+
+/* Quitamos el estilo por defecto del botón del acordeón para personalizarlo */
+.accordion-button-custom {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    font-size: 1rem;
+    color: #212529;
+    text-align: left;
+    background-color: #fff;
+    border: 0;
+    border-radius: 0;
+    overflow-anchor: none;
+    transition: background-color .15s ease-in-out;
+    cursor: pointer;
+}
+
+.accordion-button-custom:not(.collapsed) {
+    color: #0c63e4;
+    background-color: #e7f1ff;
+    box-shadow: inset 0 -1px 0 rgba(0,0,0,.125);
+}
+
+/* Transición para el icono de la flecha */
+.transition-icon {
+    transition: transform 0.2s ease-in-out;
+}
+
+/* Input de nombre en la cabecera (invisible hasta que se enfoca o hover) */
+.stage-name-input {
+    border: 1px solid transparent;
+    background: transparent;
+    font-weight: bold;
+    color: inherit;
+    width: 100%;
+    margin: 0 10px;
+    padding: 2px 5px;
+    border-radius: 4px;
+}
+
+.stage-name-input:hover {
+    border: 1px solid #ced4da;
+    background: white;
+}
+
+.stage-name-input:focus {
+    outline: none;
+    border: 1px solid #86b7fe;
+    background: white;
+    box-shadow: 0 0 0 0.25rem rgba(13,110,253,.25);
+}
+
+/* Input de color "disfrazado" */
+.color-picker-wrapper {
+    position: relative;
+    overflow: hidden;
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    border: 1px solid rgba(0,0,0,0.2);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.color-picker-input {
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    cursor: pointer;
+    padding: 0;
+    border: none;
+}
+
+/* Botón de visibilidad (ojo) */
+.btn-visibility {
+    border: none;
+    background: transparent;
+    color: #6c757d;
+    padding: 0 5px;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.btn-visibility:hover {
+    color: #000;
+}
+
+.btn-visibility.active {
+    color: #198754; /* Verde cuando está visible */
+}
+
+/* Indicador visual extra para la etapa activa (opcional, si quisieras usarlo) */
+.stage-active-border {
+    border-left: 5px solid #0d6efd !important;
+}
+
+/* ========================================================= */
+
+
 /* Ocultar el panel de instrucciones por defecto de Leaflet Routing Machine */
 .leaflet-routing-container {
     display: none !important; 

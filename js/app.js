@@ -1,34 +1,29 @@
 /**
- * APP.JS - Planificador de Viajes en Autocaravana
+ * APP.JS - Planificador de Viajes en Autocaravana (Versión Sofisticada)
  * -----------------------------------------------
- * Lógica principal para mapa, rutas, gestión de estados e interacción.
  */
 
 // ==========================================
-// 1. INICIALIZACIÓN DEL MAPA Y VARIABLES
+// 1. INICIALIZACIÓN
 // ==========================================
 
-// Inicializar mapa centrado en España
 var map = L.map('map').setView([40.416775, -3.703790], 6);
 
-// Capa base (OpenStreetMap)
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors'
 }).addTo(map);
 
-// Capa para los Puntos de Interés (POIs) independientes
 var poiLayerGroup = L.layerGroup().addTo(map);
 
-// Inicializar el Buscador (Geocoder)
+// Buscador
 var geocoder = L.Control.Geocoder.nominatim();
 L.Control.geocoder({
     geocoder: geocoder,
-    defaultMarkGeocode: false, // No marcar automáticamente, lo gestionamos nosotros
+    defaultMarkGeocode: false,
     placeholder: "Buscar lugar...",
     errorMessage: "No se ha encontrado nada."
 })
 .on('markgeocode', function(e) {
-    // Cuando el buscador encuentra algo, actuamos como si fuera un clic
     var latlng = e.geocode.center;
     var name = e.geocode.name;
     handleMapInteraction(latlng, name);
@@ -39,46 +34,39 @@ L.Control.geocoder({
 
 // ESTADO DE LA APLICACIÓN
 let appData = {
-    stages: [], // Array de etapas
-    pois: []    // Array de puntos de interés sueltos
+    stages: [], 
+    pois: []    
 };
 
-// Variables de control en tiempo de ejecución
-let activeRoutingControl = null; // Instancia actual de Leaflet Routing Machine
-let activeStageId = null;        // ID de la etapa que se está editando
-let tempClickLocation = null;    // Coordenadas temporales al hacer clic
-let tempLocationName = "";       // Nombre temporal al hacer clic
+// **CAMBIO IMPORTANTE**: Diccionario para guardar los controles de ruta de cada etapa individualmente
+let stageRoutingControls = {}; 
+
+let activeStageId = null; // ID de la etapa "seleccionada" para añadir puntos
+let tempClickLocation = null;    
+let tempLocationName = "";       
 
 
 // ==========================================
-// 2. INTERACCIÓN CON EL MAPA (CLICS Y MODAL)
+// 2. INTERACCIÓN (CLICS Y MODAL)
 // ==========================================
 
-// Evento Click en el mapa
 map.on('click', function(e) {
     handleMapInteraction(e.latlng);
 });
 
-// Función centralizada para manejar nuevas ubicaciones (por clic o buscador)
 function handleMapInteraction(latlng, preloadedName = null) {
     tempClickLocation = latlng;
-    
-    // Abrir el Modal de Bootstrap
     var modalElement = document.getElementById('clickActionModal');
     var modal = new bootstrap.Modal(modalElement);
     modal.show();
 
-    // Referencia al texto del modal
     var previewText = document.getElementById('modal-address-preview');
     
     if (preloadedName) {
-        // Si viene del buscador, ya tenemos nombre
         tempLocationName = preloadedName;
         previewText.innerHTML = `<strong>${preloadedName}</strong>`;
     } else {
-        // Si es un clic, buscamos la dirección (Reverse Geocoding)
         previewText.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando dirección...';
-        
         geocoder.reverse(latlng, map.options.crs.scale(map.getZoom()), function(results) {
             if (results && results.length > 0) {
                 tempLocationName = results[0].name;
@@ -91,43 +79,29 @@ function handleMapInteraction(latlng, preloadedName = null) {
     }
 }
 
-// Acción Modal 1: Añadir a la etapa activa
 function addCurrentLocToStage() {
     if (!activeStageId) {
-        alert("¡Ojo! Primero debes crear o seleccionar una etapa en el panel lateral.");
+        alert("Selecciona una etapa haciendo clic en su cuerpo o crea una nueva.");
         return;
     }
-    
     const stage = appData.stages.find(s => s.id === activeStageId);
+    stage.waypoints.push({ latLng: tempClickLocation, name: tempLocationName });
     
-    // Añadimos el punto con coordenadas y nombre
-    stage.waypoints.push({
-        latLng: tempClickLocation,
-        name: tempLocationName
-    });
-    
-    // Actualizamos todo
-    refreshMapRoute(stage);
+    // Aseguramos que sea visible si añadimos puntos
+    stage.visible = true; 
+
+    refreshMapRoute(stage.id);
     renderSidebar();
     
-    // Cerrar modal
     var modalEl = document.getElementById('clickActionModal');
     var modal = bootstrap.Modal.getInstance(modalEl);
     modal.hide();
 }
 
-// Acción Modal 2: Crear Punto de Interés (POI)
 function addCurrentLocAsPOI() {
-    const newPoi = {
-        id: Date.now(),
-        latLng: tempClickLocation,
-        name: tempLocationName
-    };
-    
+    const newPoi = { id: Date.now(), latLng: tempClickLocation, name: tempLocationName };
     appData.pois.push(newPoi);
     renderPOIsOnMap();
-    
-    // Cerrar modal
     var modalEl = document.getElementById('clickActionModal');
     var modal = bootstrap.Modal.getInstance(modalEl);
     modal.hide();
@@ -135,7 +109,7 @@ function addCurrentLocAsPOI() {
 
 
 // ==========================================
-// 3. GESTIÓN DE ETAPAS (SIDEBAR)
+// 3. GESTIÓN DE ETAPAS (SIDEBAR SOFISTICADO)
 // ==========================================
 
 function createNewStage() {
@@ -145,52 +119,81 @@ function createNewStage() {
         name: `Etapa ${appData.stages.length + 1}`,
         waypoints: [],
         distance: 0,
-        color: getRandomColor()
+        color: getRandomColor(),
+        visible: true, // Por defecto visible
+        isOpen: true   // Por defecto desplegada en el acordeón
     };
     appData.stages.push(newStage);
-    editStage(id); // Abrir automáticamente para editar
-}
-
-function editStage(id) {
-    activeStageId = id;
-    const stage = appData.stages.find(s => s.id === id);
-    
-    // Al editar, dibujamos su ruta y actualizamos el sidebar
-    refreshMapRoute(stage);
+    setActiveStage(id); // La marcamos como activa para trabajar
     renderSidebar();
-    // Aseguramos que los POIs sigan visibles
-    renderPOIsOnMap();
 }
 
+// Función para establecer qué etapa recibe los nuevos puntos (borde azul)
+function setActiveStage(id) {
+    activeStageId = id;
+    renderSidebar(); // Re-render para actualizar bordes y estilos
+}
+
+// Alternar visibilidad en el mapa (OJO)
+function toggleStageVisibility(event, id) {
+    event.stopPropagation(); // Evitar que se cierre el acordeón
+    const stage = appData.stages.find(s => s.id === id);
+    stage.visible = !stage.visible;
+    refreshMapRoute(id); // Actualizar solo mapa
+    renderSidebar();     // Actualizar icono ojo
+}
+
+// Actualizar color
+function updateStageColor(id, newColor) {
+    const stage = appData.stages.find(s => s.id === id);
+    stage.color = newColor;
+    refreshMapRoute(id); // Repintar ruta con nuevo color
+}
+
+// Actualizar nombre
 function updateStageName(id, newName) {
     const stage = appData.stages.find(s => s.id === id);
-    if(stage) stage.name = newName;
+    stage.name = newName;
+    // No hace falta repintar mapa, solo actualizar datos. 
+    // Como es un input, el valor ya se ve en pantalla.
 }
 
-function deleteStage(id) {
-    if(!confirm("¿Seguro que quieres borrar esta etapa completa?")) return;
-    
-    appData.stages = appData.stages.filter(s => s.id !== id);
-    
-    // Si borramos la activa, limpiamos el mapa
-    if (activeStageId === id) {
-        activeStageId = null;
-        if(activeRoutingControl) {
-            map.removeControl(activeRoutingControl);
-            activeRoutingControl = null;
-        }
+// Controlar apertura/cierre acordeón para guardar estado
+function toggleAccordion(id) {
+    const stage = appData.stages.find(s => s.id === id);
+    stage.isOpen = !stage.isOpen;
+    // Si abrimos el acordeón, también la hacemos la etapa "activa" para editar
+    if (stage.isOpen) {
+        activeStageId = id;
     }
+    renderSidebar();
+}
+
+
+function deleteStage(id) {
+    if(!confirm("¿Borrar etapa y su ruta?")) return;
+    
+    // 1. Eliminar del mapa
+    if (stageRoutingControls[id]) {
+        map.removeControl(stageRoutingControls[id]);
+        delete stageRoutingControls[id];
+    }
+
+    // 2. Eliminar de datos
+    appData.stages = appData.stages.filter(s => s.id !== id);
+    if (activeStageId === id) activeStageId = null;
+    
     renderSidebar();
 }
 
 function removeWaypoint(stageId, index) {
     const stage = appData.stages.find(s => s.id === stageId);
-    stage.waypoints.splice(index, 1); // Quitar del array
-    refreshMapRoute(stage);
+    stage.waypoints.splice(index, 1);
+    refreshMapRoute(stageId);
     renderSidebar();
 }
 
-// Renderizado de la barra lateral (HTML dinámico)
+// RENDERIZADO DEL SIDEBAR
 function renderSidebar() {
     const container = document.getElementById('stages-list');
     container.innerHTML = '';
@@ -198,27 +201,25 @@ function renderSidebar() {
     let totalTripKm = 0;
 
     appData.stages.forEach((stage, index) => {
-        totalTripKm += stage.distance;
-        const isEditing = stage.id === activeStageId;
+        if(stage.visible) totalTripKm += stage.distance;
         
-        // Generar HTML de las paradas
+        const isActive = stage.id === activeStageId;
+        const isOpen = stage.isOpen; // Usamos propiedad interna, no ID única
+        
+        // Generar lista de paradas
         let waypointsHtml = '';
         if (stage.waypoints.length === 0) {
-            waypointsHtml = '<div class="text-muted small fst-italic p-2">Sin paradas. Haz clic en el mapa para añadir.</div>';
+            waypointsHtml = '<div class="text-muted small fst-italic p-2">Sin paradas. Clic en mapa.</div>';
         } else {
             stage.waypoints.forEach((wp, idx) => {
-                // Definir etiquetas y colores según posición
-                let label = "Parada";
-                let badgeClass = "bg-primary";
-                
-                if (idx === 0) { label = "Origen"; badgeClass = "bg-success"; }
-                else if (idx === stage.waypoints.length - 1) { label = "Destino"; badgeClass = "bg-dark"; }
+                let badgeClass = (idx === 0) ? "bg-success" : (idx === stage.waypoints.length - 1) ? "bg-dark" : "bg-primary";
+                let label = (idx === 0) ? "Origen" : (idx === stage.waypoints.length - 1) ? "Destino" : "Parada";
                 
                 waypointsHtml += `
                     <div class="waypoint-item small" data-index="${idx}">
                         <div class="d-flex align-items-center overflow-hidden w-100">
-                            <span class="badge ${badgeClass} me-2" style="min-width: 60px;">${label}</span>
-                            <span class="text-truncate" title="${wp.name}">${wp.name}</span>
+                            <span class="badge ${badgeClass} me-2" style="font-size:0.7em; width:50px;">${label}</span>
+                            <span class="text-truncate">${wp.name}</span>
                         </div>
                         <button class="btn btn-link text-danger p-0 ms-2" onclick="removeWaypoint(${stage.id}, ${idx})">
                             <i class="fas fa-times"></i>
@@ -228,25 +229,42 @@ function renderSidebar() {
             });
         }
 
-        // Crear la tarjeta (Accordion Item)
         const card = document.createElement('div');
-        card.className = 'accordion-item border mb-2 rounded overflow-hidden';
+        // Si es la activa, añadimos clase de borde
+        card.className = `accordion-item mb-2 rounded overflow-hidden border ${isActive ? 'border-primary' : ''}`;
         
+        // HTML DE LA CABECERA (Aquí están los inputs, color y ojo)
+        // Nota: onclick="toggleAccordion" gestiona el despliegue manualmente para evitar conflictos de Bootstrap
         card.innerHTML = `
-            <h2 class="accordion-header">
-                <button class="accordion-button ${isEditing ? '' : 'collapsed'}" type="button" onclick="editStage(${stage.id})">
-                    <span class="badge me-2" style="background-color:${stage.color}; color:#fff; text-shadow:0 0 2px #000;">${index + 1}</span>
-                    <span class="flex-grow-1 text-truncate pe-2">${stage.name}</span>
-                    <span class="badge bg-secondary ms-2">${(stage.distance).toFixed(1)} km</span>
+            <div class="accordion-header d-flex align-items-center border-bottom bg-light">
+                
+                <button class="btn-visibility ms-2 ${stage.visible ? 'active' : ''}" 
+                        onclick="toggleStageVisibility(event, ${stage.id})" 
+                        title="${stage.visible ? 'Ocultar ruta' : 'Mostrar ruta'}">
+                    <i class="fa-solid ${stage.visible ? 'fa-eye' : 'fa-eye-slash'}"></i>
                 </button>
-            </h2>
-            <div class="accordion-collapse collapse ${isEditing ? 'show' : ''}">
-                <div class="accordion-body bg-light p-2">
-                    <label class="small text-muted">Nombre de la etapa:</label>
-                    <input type="text" class="form-control form-control-sm mb-3 fw-bold" value="${stage.name}" onchange="updateStageName(${stage.id}, this.value)">
+
+                <div class="color-picker-wrapper ms-2" title="Cambiar color" onclick="event.stopPropagation()">
+                    <input type="color" class="color-picker-input" value="${stage.color}" 
+                           oninput="updateStageColor(${stage.id}, this.value)">
+                </div>
+
+                <div class="accordion-button-custom ${isOpen ? '' : 'collapsed'} flex-grow-1" 
+                     role="button" onclick="toggleAccordion(${stage.id})">
                     
+                    <input type="text" class="stage-name-input" value="${stage.name}" 
+                           onclick="event.stopPropagation()"
+                           onchange="updateStageName(${stage.id}, this.value)">
+                    
+                    <span class="badge bg-secondary ms-auto small">${(stage.distance).toFixed(1)} km</span>
+                    <i class="fa-solid fa-chevron-down ms-2 transition-icon" style="transform: ${isOpen ? 'rotate(180deg)' : 'rotate(0)'}"></i>
+                </div>
+            </div>
+
+            <div class="accordion-collapse collapse ${isOpen ? 'show' : ''}">
+                <div class="accordion-body p-2 bg-white">
                     <div class="d-flex justify-content-between align-items-center mb-1">
-                        <span class="small fw-bold">Itinerario:</span>
+                        <small class="text-muted fw-bold">Itinerario:</small>
                         <small class="text-muted" style="font-size: 0.7rem;">(Arrastra para ordenar)</small>
                     </div>
                     
@@ -254,9 +272,10 @@ function renderSidebar() {
                         ${waypointsHtml}
                     </div>
 
-                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <div class="d-flex justify-content-end">
+                         ${!isActive ? `<button class="btn btn-sm btn-outline-primary me-2" onclick="setActiveStage(${stage.id})">Seleccionar para editar</button>` : ''}
                         <button class="btn btn-sm btn-outline-danger" onclick="deleteStage(${stage.id})">
-                            <i class="fas fa-trash"></i> Eliminar Etapa
+                            <i class="fas fa-trash"></i>
                         </button>
                     </div>
                 </div>
@@ -264,90 +283,88 @@ function renderSidebar() {
         `;
         container.appendChild(card);
 
-        // Habilitar Drag & Drop solo si la etapa está abierta
-        if (isEditing) {
+        // Drag & Drop
+        if (isOpen) {
             const listContainer = document.getElementById(`waypoints-list-${stage.id}`);
-            new Sortable(listContainer, {
-                animation: 150,
-                handle: '.waypoint-item', // Toda la fila es arrastrable
-                onEnd: function (evt) {
-                    // Reordenar array
-                    const movedItem = stage.waypoints.splice(evt.oldIndex, 1)[0];
-                    stage.waypoints.splice(evt.newIndex, 0, movedItem);
-                    // Recalcular ruta y vista
-                    refreshMapRoute(stage);
-                    renderSidebar();
-                }
-            });
+            if(listContainer) {
+                new Sortable(listContainer, {
+                    animation: 150,
+                    handle: '.waypoint-item',
+                    onEnd: function (evt) {
+                        const movedItem = stage.waypoints.splice(evt.oldIndex, 1)[0];
+                        stage.waypoints.splice(evt.newIndex, 0, movedItem);
+                        refreshMapRoute(stage.id);
+                        renderSidebar();
+                    }
+                });
+            }
         }
     });
 
-    // Actualizar total global
     document.getElementById('total-km').innerText = totalTripKm.toFixed(1) + " km";
 }
 
 
 // ==========================================
-// 4. LÓGICA DE RUTAS (LEAFLET ROUTING)
+// 4. LÓGICA DE RUTAS (MÚLTIPLES INSTANCIAS)
 // ==========================================
 
-function refreshMapRoute(stage) {
-    // 1. Limpiar ruta anterior
-    if (activeRoutingControl) {
-        map.removeControl(activeRoutingControl);
-        activeRoutingControl = null;
+function refreshMapRoute(stageId) {
+    const stage = appData.stages.find(s => s.id === stageId);
+    if (!stage) return;
+
+    // 1. Si ya existe un control para esta etapa, lo quitamos para repintar
+    if (stageRoutingControls[stageId]) {
+        map.removeControl(stageRoutingControls[stageId]);
+        delete stageRoutingControls[stageId];
     }
 
-    // 2. Si no hay puntos o solo 1, no podemos calcular ruta (Leaflet Routing necesita 2)
-    if (!stage.waypoints || stage.waypoints.length < 2) {
+    // 2. Si la etapa está marcada como invisible, o tiene < 2 puntos, terminamos aquí
+    if (!stage.visible || !stage.waypoints || stage.waypoints.length < 2) {
+        // Si acabamos de borrar puntos y nos quedamos con <2, distancia es 0
+        if (stage.waypoints.length < 2) stage.distance = 0;
         return; 
     }
 
-    // 3. Extraer solo coordenadas para el plugin
+    // 3. Crear control nuevo específico para esta etapa
     const waypointsCoords = stage.waypoints.map(w => w.latLng);
 
-    // 4. Crear control de ruta
-    activeRoutingControl = L.Routing.control({
+    const control = L.Routing.control({
         waypoints: waypointsCoords,
-        routeWhileDragging: false, // False mejora rendimiento
-        show: false, // Ocultar panel de instrucciones nativo
-        addWaypoints: false, // Desactivar añadir puntos arrastrando la línea (mejor usar nuestra UI)
+        routeWhileDragging: false,
+        show: false,
+        addWaypoints: false,
         
-        // PERSONALIZACIÓN DE MARCADORES
         createMarker: function(i, wp, nWps) {
-            let type = 'stop'; 
+            // Personalización de marcadores (igual que antes pero con soporte de color dinámico si quisiéramos)
             let iconClass = 'fa-map-pin';
             let cssClass = '';
-
-            // Lógica para determinar el icono según posición
-            if (i === 0) { 
-                type = 'origin'; 
-                iconClass = 'fa-flag'; 
-                cssClass = 'marker-origin'; // Definido en CSS (Verde)
-            } else if (i === nWps - 1) { 
-                type = 'dest'; 
-                iconClass = 'fa-flag-checkered'; 
-                cssClass = 'marker-dest';   // Definido en CSS (Negro)
+            
+            if (i === 0) { iconClass = 'fa-flag'; cssClass = 'marker-origin'; }
+            else if (i === nWps - 1) { iconClass = 'fa-flag-checkered'; cssClass = 'marker-dest'; }
+            else { 
+                // Podríamos usar el color de la etapa para el pin intermedio
+                // cssClass = 'marker-poi'; 
             }
 
-            const icon = createCustomIcon(iconClass, cssClass);
-
-            const marker = L.marker(wp.latLng, {
-                draggable: true,
-                icon: icon
+            // Usamos un estilo especial para los pines intermedios basado en el color de la etapa?
+            // De momento mantengo tu estilo original para no complicar el CSS dinámico,
+            // pero el borde del marker se podría pintar con stage.color.
+            const icon = L.divIcon({
+                className: 'custom-div-icon',
+                html: `<div class='marker-pin ${cssClass}' style='${!cssClass ? "background:"+stage.color : ""}'><i class='fa-solid ${iconClass}'></i></div>`,
+                iconSize: [30, 42],
+                iconAnchor: [15, 42],
+                popupAnchor: [0, -38]
             });
 
-            // Popup informativo
-            const pointName = stage.waypoints[i].name || "Punto de ruta";
-            marker.bindPopup(`<strong>${pointName}</strong><br><small>Arrastra para corregir posición</small>`);
-
-            // Evento: Al soltar marcador arrastrado
+            const marker = L.marker(wp.latLng, { draggable: true, icon: icon });
+            marker.bindPopup(`<strong>${stage.waypoints[i].name}</strong>`);
+            
             marker.on('dragend', function(e) {
                 stage.waypoints[i].latLng = e.target.getLatLng();
-                // Importante: Recalcular ruta tras arrastrar
-                refreshMapRoute(stage); 
+                refreshMapRoute(stage.id);
             });
-
             return marker;
         },
         lineOptions: {
@@ -355,150 +372,100 @@ function refreshMapRoute(stage) {
         }
     }).addTo(map);
 
-    // 5. Escuchar resultado del cálculo para actualizar Km
-    activeRoutingControl.on('routesfound', function(e) {
+    // Guardar referencia en el diccionario
+    stageRoutingControls[stageId] = control;
+
+    control.on('routesfound', function(e) {
         const routes = e.routes;
         const summary = routes[0].summary;
-        // Convertir metros a km
         stage.distance = summary.totalDistance / 1000;
         
-        // Actualizar solo el texto de km en sidebar sin repintar todo (para evitar bucles)
+        // Actualizar texto Km sin redibujar todo el sidebar para evitar perder foco si estamos editando
+        // (Aunque renderSidebar es rápido, podemos optimizar si fuera necesario)
         renderSidebar(); 
     });
     
-    // Manejo de errores de ruta
-    activeRoutingControl.on('routingerror', function(e) {
-        console.log("Error de ruta:", e);
+    control.on('routingerror', function(e) {
+        console.log("Error routing stage " + stageId, e);
     });
 }
 
 
 // ==========================================
-// 5. GESTIÓN DE PUNTOS DE INTERÉS (POIs)
+// 5. POIS Y UTILIDADES
 // ==========================================
 
 function renderPOIsOnMap() {
     poiLayerGroup.clearLayers();
-    
     appData.pois.forEach(poi => {
-        // Icono estrella amarilla
-        const icon = createCustomIcon('fa-star', 'marker-poi');
+        const icon = L.divIcon({
+            className: 'custom-div-icon',
+            html: `<div class='marker-pin marker-poi'><i class='fa-solid fa-star'></i></div>`,
+            iconSize: [30, 42],
+            iconAnchor: [15, 42],
+            popupAnchor: [0, -38]
+        });
         
         const marker = L.marker(poi.latLng, { icon: icon }).addTo(poiLayerGroup);
-        
-        // Contenido del Popup
-        const popupContent = `
-            <div class="text-center">
-                <h6>${poi.name}</h6>
-                <div class="d-grid gap-2 mt-2">
-                    <button class="btn btn-sm btn-outline-primary" onclick="convertPoiToStop(${poi.id})">
-                        <i class="fas fa-plus"></i> Añadir a ruta
-                    </button>
-                    <button class="btn btn-sm btn-outline-danger" onclick="deletePoi(${poi.id})">
-                        <i class="fas fa-trash"></i> Borrar
-                    </button>
-                </div>
-            </div>
-        `;
-        marker.bindPopup(popupContent);
+        marker.bindPopup(`
+            <div class="text-center"><h6>${poi.name}</h6>
+            <button class="btn btn-sm btn-outline-primary" onclick="convertPoiToStop(${poi.id})">Añadir a etapa activa</button>
+            <button class="btn btn-sm btn-outline-danger" onclick="deletePoi(${poi.id})">Borrar</button></div>
+        `);
     });
 }
 
-// Convertir un POI en una parada de la etapa activa
 function convertPoiToStop(poiId) {
-    if (!activeStageId) {
-        alert("Selecciona primero una etapa para añadir este punto.");
-        return;
-    }
-    
+    if (!activeStageId) { alert("Selecciona etapa activa primero"); return; }
     const poi = appData.pois.find(p => p.id === poiId);
     const stage = appData.stages.find(s => s.id === activeStageId);
-    
-    // Añadir a waypoints
-    stage.waypoints.push({
-        latLng: poi.latLng,
-        name: poi.name
-    });
-    
-    map.closePopup();
-    refreshMapRoute(stage);
+    stage.waypoints.push({ latLng: poi.latLng, name: poi.name });
+    refreshMapRoute(stage.id);
     renderSidebar();
+    map.closePopup();
 }
 
 function deletePoi(id) {
-    if(!confirm("¿Eliminar este marcador?")) return;
     appData.pois = appData.pois.filter(p => p.id !== id);
     renderPOIsOnMap();
-}
-
-
-// ==========================================
-// 6. UTILIDADES Y EXPORTACIÓN
-// ==========================================
-
-// Helper para crear DivIcons HTML
-function createCustomIcon(faIconClass, colorClass) {
-    return L.divIcon({
-        className: 'custom-div-icon',
-        html: `<div class='marker-pin ${colorClass}'><i class='fa-solid ${faIconClass}'></i></div>`,
-        iconSize: [30, 42],
-        iconAnchor: [15, 42],
-        popupAnchor: [0, -38]
-    });
 }
 
 function getRandomColor() {
     const letters = '0123456789ABCDEF';
     let color = '#';
-    for (let i = 0; i < 6; i++) {
-        color += letters[Math.floor(Math.random() * 16)];
-    }
+    for (let i = 0; i < 6; i++) { color += letters[Math.floor(Math.random() * 16)]; }
     return color;
 }
 
-// Exportar JSON
 function exportData() {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", "viaje_autocaravana.json");
-    document.body.appendChild(downloadAnchorNode); 
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
+    const a = document.createElement('a');
+    a.href = dataStr; a.download = "viaje_autocaravana.json";
+    a.click();
 }
 
-// Importar JSON
 function importData(input) {
     const file = input.files[0];
     if(!file) return;
-    
     const reader = new FileReader();
     reader.onload = function(e) {
         try {
-            const json = JSON.parse(e.target.result);
+            appData = JSON.parse(e.target.result);
             
-            // Validación básica
-            if(!json.stages && !json.pois) throw new Error("Formato inválido");
-            
-            appData = json;
-            
-            // Resetear estados
+            // Limpiar mapa viejo
+            Object.values(stageRoutingControls).forEach(c => map.removeControl(c));
+            stageRoutingControls = {};
             activeStageId = null;
-            if(activeRoutingControl) {
-                map.removeControl(activeRoutingControl);
-                activeRoutingControl = null;
-            }
-            
-            renderSidebar();
+
+            // Restaurar rutas visibles
+            appData.stages.forEach(s => {
+                if(s.visible === undefined) s.visible = true; // compatibilidad
+                if(s.visible) refreshMapRoute(s.id);
+            });
             renderPOIsOnMap();
-            alert("¡Viaje cargado correctamente!");
-            
-        } catch(err) {
-            console.error(err);
-            alert("Error al cargar el archivo. Asegúrate de que es un JSON válido generado por esta web.");
-        }
+            renderSidebar();
+        } catch(err) { console.error(err); alert("Error al importar"); }
     };
     reader.readAsText(file);
-    // Limpiar input para permitir cargar el mismo archivo si se modifica
     input.value = ''; 
 }
