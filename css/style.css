@@ -1,209 +1,246 @@
+/* =========================================
+   SYNTHWAVE PALETTE & GLOBAL
+   ========================================= */
+:root {
+    --bg-dark: #0f0418;       /* Fondo casi negro morado */
+    --bg-panel: #1a0b2e;      /* Fondo paneles */
+    --neon-pink: #ff2a6d;     /* Rosa Hotline Miami */
+    --neon-cyan: #05d9e8;     /* Azul Tron */
+    --neon-yellow: #f7f052;   /* Amarillo neón */
+    --grid-color: rgba(255, 42, 109, 0.1);
+    
+    --font-title: 'Orbitron', sans-serif;
+    --font-body: 'Rajdhani', sans-serif;
+}
+
 html, body {
     height: 100%;
     margin: 0;
-    overflow: hidden; /* Evita scroll doble */
+    overflow: hidden;
+    background-color: var(--bg-dark);
+    font-family: var(--font-body);
+    color: #fff;
 }
 
-#map {
-    height: 100vh;
+/* Efecto Scanlines (TV vieja) sobre toda la web */
+.scanlines {
+    background: linear-gradient(
+        to bottom,
+        rgba(255,255,255,0),
+        rgba(255,255,255,0) 50%,
+        rgba(0,0,0,0.1) 50%,
+        rgba(0,0,0,0.1)
+    );
+    background-size: 100% 4px;
+    height: 100%;
+    pointer-events: none; /* Deja pasar los clicks */
+    position: absolute;
     width: 100%;
-    z-index: 1;
+    z-index: 9999;
+}
+/* Pero necesitamos que la interfaz sea clickable, así que aplicamos scanlines con cuidado */
+.scanlines > * {
+    pointer-events: auto;
 }
 
+/* =========================================
+   SIDEBAR & LAYOUT
+   ========================================= */
 #sidebar {
-    height: 100vh;
-    z-index: 2;
-    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+    background: var(--bg-panel);
+    border-right: 2px solid var(--neon-pink) !important;
+    box-shadow: 5px 0 25px rgba(255, 42, 109, 0.2);
+    z-index: 1000;
 }
 
-/* Ajustes para la lista de paradas arrastrable */
-.waypoint-item {
-    cursor: grab;
-    background: #fff;
-    border: 1px solid #dee2e6;
-    padding: 8px;
-    margin-bottom: 5px;
-    border-radius: 4px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+.retro-header {
+    background: linear-gradient(180deg, #2b063b 0%, #1a0b2e 100%);
+    border-bottom: 1px solid var(--neon-cyan);
+    box-shadow: 0 0 15px var(--neon-cyan);
 }
 
-.waypoint-item:active {
-    cursor: grabbing;
+.synth-title {
+    font-family: var(--font-title);
+    font-weight: 900;
+    font-size: 2.2rem;
+    color: transparent;
+    background: linear-gradient(to bottom, #ffeb3b 0%, #ff00ff 100%);
+    -webkit-background-clip: text;
+    text-shadow: 2px 2px 0px rgba(0,0,0,0.5);
+    letter-spacing: -2px;
 }
 
-/* =========================================================
-   ESTILOS NUEVOS PARA LA CABECERA SOFISTICADA
-   ========================================================= */
+.retro-footer {
+    background: #0f0418;
+    border-top: 1px solid var(--neon-pink) !important;
+}
 
-/* Quitamos el estilo por defecto del botón del acordeón para personalizarlo */
+.lcd-text {
+    font-family: 'Courier New', monospace;
+    color: var(--neon-yellow);
+    font-weight: bold;
+    text-shadow: 0 0 5px var(--neon-yellow);
+    font-size: 1.2rem;
+}
+
+/* =========================================
+   BUTTONS & INPUTS
+   ========================================= */
+.btn-retro {
+    background: transparent;
+    border: 2px solid var(--neon-cyan);
+    color: var(--neon-cyan);
+    font-family: var(--font-title);
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    box-shadow: 0 0 5px var(--neon-cyan), inset 0 0 5px var(--neon-cyan);
+    transition: all 0.3s;
+}
+
+.btn-retro:hover {
+    background: var(--neon-cyan);
+    color: #000;
+    box-shadow: 0 0 20px var(--neon-cyan), inset 0 0 10px var(--neon-cyan);
+}
+
+.btn-retro-alt {
+    background: transparent;
+    border: 2px solid var(--neon-yellow);
+    color: var(--neon-yellow);
+    font-family: var(--font-title);
+    text-transform: uppercase;
+    box-shadow: 0 0 5px var(--neon-yellow);
+}
+.btn-retro-alt:hover {
+    background: var(--neon-yellow);
+    color: #000;
+}
+
+.btn-retro-action {
+    background: linear-gradient(45deg, var(--neon-pink), #b00b69);
+    border: none;
+    color: white;
+    font-family: var(--font-title);
+    padding: 10px;
+    letter-spacing: 1px;
+    clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+    transition: transform 0.2s;
+}
+.btn-retro-action:hover {
+    transform: scale(1.02);
+    color: #fff;
+    text-shadow: 0 0 5px #fff;
+}
+
+/* =========================================
+   ACCORDION & LISTS
+   ========================================= */
+.accordion-item {
+    background-color: transparent !important;
+    border: 1px solid var(--neon-cyan);
+    margin-bottom: 10px;
+    border-radius: 0 !important;
+}
+
 .accordion-button-custom {
-    width: 100%;
+    background: rgba(5, 217, 232, 0.1);
+    color: var(--neon-cyan);
+    border-left: 4px solid var(--neon-cyan);
+    font-family: var(--font-title);
+    text-transform: uppercase;
+    padding: 10px;
     display: flex;
     align-items: center;
-    padding: 1rem;
-    font-size: 1rem;
-    color: #212529;
-    text-align: left;
-    background-color: #fff;
-    border: 0;
-    border-radius: 0;
-    overflow-anchor: none;
-    transition: background-color .15s ease-in-out;
     cursor: pointer;
 }
 
-.accordion-button-custom:not(.collapsed) {
-    color: #0c63e4;
-    background-color: #e7f1ff;
-    box-shadow: inset 0 -1px 0 rgba(0,0,0,.125);
+.accordion-button-custom:hover {
+    background: rgba(5, 217, 232, 0.2);
 }
 
-/* Transición para el icono de la flecha */
-.transition-icon {
-    transition: transform 0.2s ease-in-out;
+.accordion-collapse {
+    background: rgba(0,0,0,0.5);
 }
 
-/* Input de nombre en la cabecera (invisible hasta que se enfoca o hover) */
 .stage-name-input {
-    border: 1px solid transparent;
     background: transparent;
-    font-weight: bold;
-    color: inherit;
-    width: 100%;
-    margin: 0 10px;
-    padding: 2px 5px;
-    border-radius: 4px;
-}
-
-.stage-name-input:hover {
-    border: 1px solid #ced4da;
-    background: white;
+    border: none;
+    color: var(--neon-cyan);
+    font-family: var(--font-title);
+    text-shadow: 0 0 2px var(--neon-cyan);
 }
 
 .stage-name-input:focus {
     outline: none;
-    border: 1px solid #86b7fe;
-    background: white;
-    box-shadow: 0 0 0 0.25rem rgba(13,110,253,.25);
+    background: rgba(0,0,0,0.3);
 }
 
-/* Input de color "disfrazado" */
-.color-picker-wrapper {
-    position: relative;
-    overflow: hidden;
-    width: 25px;
-    height: 25px;
-    border-radius: 50%;
-    border: 1px solid rgba(0,0,0,0.2);
-    cursor: pointer;
-    flex-shrink: 0;
+.waypoint-item {
+    background: #000;
+    border: 1px solid #333;
+    color: #ccc;
+    font-family: 'Courier New', monospace;
+    margin-bottom: 5px;
+    padding: 5px;
+}
+.waypoint-item:hover {
+    border-color: var(--neon-pink);
 }
 
-.color-picker-input {
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    cursor: pointer;
-    padding: 0;
-    border: none;
+.badge {
+    border-radius: 0; /* Sin bordes redondeados, estilo bloque */
 }
 
-/* Botón de visibilidad (ojo) */
-.btn-visibility {
-    border: none;
-    background: transparent;
-    color: #6c757d;
-    padding: 0 5px;
-    cursor: pointer;
-    transition: color 0.2s;
+/* =========================================
+   MAP & OVERLAYS
+   ========================================= */
+#map {
+    height: 100vh;
+    width: 100%;
+    z-index: 1;
+    background: #111; /* Color de fondo mientras carga tiles */
 }
 
-.btn-visibility:hover {
-    color: #000;
+/* Truco para oscurecer los controles del mapa */
+.leaflet-control-geocoder, .leaflet-control-layers {
+    background: #000 !important;
+    border: 2px solid var(--neon-pink) !important;
+    color: var(--neon-pink) !important;
+    font-family: var(--font-body);
+}
+.leaflet-control-geocoder-form input {
+    background: #000;
+    color: var(--neon-cyan);
 }
 
-.btn-visibility.active {
-    color: #198754; /* Verde cuando está visible */
-}
-
-/* Indicador visual extra para la etapa activa (opcional, si quisieras usarlo) */
-.stage-active-border {
-    border-left: 5px solid #0d6efd !important;
-}
-
-/* ========================================================= */
-
-.leaflet-control-layers {
-    margin-top: 10px;
-    margin-right: 10px;
-    box-shadow: 0 1px 5px rgba(0,0,0,0.4);
-    border-radius: 5px;
-}
-
-.leaflet-control-layers-expanded {
-    padding: 6px 10px 6px 6px;
-}
-
-/* Ocultar el panel de instrucciones por defecto de Leaflet Routing Machine */
-.leaflet-routing-container {
-    display: none !important; 
-}
-
-/* Responsive: En móvil el sidebar colapsa o cambia de altura */
-@media (max-width: 768px) {
-    #sidebar {
-        height: 40vh; /* Mapa arriba, panel abajo */
-        order: 2;
-    }
-    #map {
-        height: 60vh;
-        order: 1;
-    }
-    .row {
-        flex-direction: column;
-    }
-}
-
-/* Iconos personalizados en el mapa */
-.custom-div-icon {
-    background: transparent;
-    border: none;
-}
-
+/* Estilos de los marcadores */
 .marker-pin {
-    width: 30px;
-    height: 30px;
-    border-radius: 50% 50% 50% 0;
-    background: #3098F3; /* Azul por defecto */
-    position: absolute;
-    transform: rotate(-45deg);
-    left: 50%;
-    top: 50%;
-    margin: -15px 0 0 -15px;
-    box-shadow: 2px 3px 5px rgba(0,0,0,0.3);
-    text-align: center;
-    line-height: 30px;
+    border: 2px solid white;
+    box-shadow: 0 0 10px var(--neon-pink);
 }
-
-/* Icono interior rotado para que se vea recto */
 .marker-pin i {
-    transform: rotate(45deg); 
-    color: white;
-    font-size: 14px;
-    margin-top: 3px; /* Ajuste fino */
-    margin-left: 2px;
+    color: #fff;
+    text-shadow: 1px 1px 0 #000;
 }
 
-/* Colores específicos */
-.marker-origin { background: #198754; } /* Verde - Bootstrap Success */
-.marker-dest { background: #000; } /* Negro - Meta */
-.marker-poi { background: #ffc107; } /* Amarillo - Warning */
+/* MODAL */
+.retro-modal {
+    background: #0f0418;
+    border: 2px solid var(--neon-pink);
+    box-shadow: 0 0 20px var(--neon-pink), inset 0 0 20px rgba(255,42,109, 0.2);
+}
 
-/* Ajuste buscador */
-.leaflet-control-geocoder {
-    z-index: 999;
+.retro-box {
+    border: 1px dashed var(--neon-cyan);
+    padding: 10px;
+    background: rgba(5, 217, 232, 0.05);
+    color: #fff;
+    font-family: 'Courier New', monospace;
+}
+
+/* Ajustes Responsive */
+@media (max-width: 768px) {
+    #sidebar { height: 45vh; order: 2; border-top: 2px solid var(--neon-pink); }
+    #map { height: 55vh; order: 1; }
+    .scanlines { display: none; } /* Mejor rendimiento en móvil */
 }

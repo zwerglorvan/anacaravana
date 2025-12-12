@@ -3,56 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Planificador de Viajes</title>
+    <title>ANACARAVANA 1984</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
     
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-<div class="container-fluid p-0 h-100">
-    <div class="row g-0 h-100">
+<div class="container-fluid p-0 h-100 scanlines"> <div class="row g-0 h-100">
         
-        <div class="col-md-4 col-lg-3 d-flex flex-column bg-light border-end" id="sidebar">
-            <div class="p-3 bg-primary text-white d-flex justify-content-between align-items-center">
-                <h5 class="m-0"><i class="fa-solid fa-route"></i> Planificador</h5>
-                <div>
-                    <button class="btn btn-sm btn-outline-light me-1" onclick="generateShareLink()" title="Copiar enlace">
-                        <i class="fa-solid fa-share-nodes"></i>
+        <div class="col-md-4 col-lg-3 d-flex flex-column retro-sidebar border-end" id="sidebar">
+            
+            <div class="p-3 retro-header d-flex flex-column align-items-center justify-content-center text-center">
+                <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3Z5eXJ6eXJ6eXJ6eXJ6eXJ6eXJ6eXJ6eXJ6eXJ6eXJ6eXJ6eSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/iO4ptP2jv71Ta/giphy.gif" alt="SynthCar" style="width: 50px; margin-bottom: 5px;">
+                
+                <h1 class="synth-title m-0">ANACARAVANA</h1>
+                <small class="text-neon-cyan" style="letter-spacing: 2px;">PLANIFICADOR v1.0</small>
+
+                <div class="mt-3 w-100 d-flex justify-content-center gap-2">
+                    <button class="btn btn-sm btn-retro" onclick="generateShareLink()" title="Copiar enlace">
+                        <i class="fa-solid fa-share-nodes"></i> SHARE
                     </button>
-                    <button class="btn btn-sm btn-outline-light" onclick="exportData()" title="Descargar JSON">
-                        <i class="fa-solid fa-download"></i>
+                    <button class="btn btn-sm btn-retro" onclick="exportData()" title="Descargar JSON">
+                        <i class="fa-solid fa-save"></i> SAVE
                     </button>
-                    <label class="btn btn-sm btn-outline-light mb-0" title="Cargar JSON">
-                        <i class="fa-solid fa-upload"></i> <input type="file" id="importFile" hidden onchange="importData(this)">
+                    <label class="btn btn-sm btn-retro mb-0" title="Cargar JSON">
+                        <i class="fa-solid fa-upload"></i> LOAD <input type="file" id="importFile" hidden onchange="importData(this)">
                     </label>
                 </div>
             </div>
 
             <div class="flex-grow-1 overflow-auto p-3" id="stages-container">
-                <div id="stages-list" class="accordion"></div>
-                <button class="btn btn-outline-primary w-100 mt-3" onclick="createNewStage()">
-                    <i class="fa-solid fa-plus"></i> Nueva Etapa
+                <div id="stages-list" class="accordion retro-accordion"></div>
+                <button class="btn btn-retro-action w-100 mt-3" onclick="createNewStage()">
+                    <i class="fa-solid fa-plus"></i> INSERT COIN (NUEVA ETAPA)
                 </button>
             </div>
 
-            <div class="p-3 bg-white border-top">
-                <div class="d-flex justify-content-between">
-                    <strong>Total Kilómetros:</strong>
-                    <span id="total-km">0 km</span>
+            <div class="p-3 retro-footer border-top">
+                <div class="d-flex justify-content-between align-items-center">
+                    <strong class="text-neon-pink">TOTAL TRIP:</strong>
+                    <span id="total-km" class="lcd-text">0.0 KM</span>
                 </div>
             </div>
         </div>
 
         <div class="col-md-8 col-lg-9 position-relative">
             <div id="map"></div>
-            <div id="search-overlay" class="position-absolute top-0 start-50 translate-middle-x mt-3 bg-white p-2 rounded shadow d-none">
-                <small>Haz clic en el mapa para añadir puntos</small>
+            <div class="retro-grid-overlay"></div> 
+            
+            <div id="search-overlay" class="position-absolute top-0 start-50 translate-middle-x mt-3 retro-glass p-2 rounded shadow d-none">
+                <small class="text-neon-cyan">CLICK MAP TO TARGET SECTOR</small>
             </div>
         </div>
     </div>
@@ -60,19 +71,22 @@
 
 <div class="modal fade" id="clickActionModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">¿Qué quieres hacer aquí?</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <div class="modal-content retro-modal">
+      <div class="modal-header border-0">
+        <h5 class="modal-title text-neon-pink">SYSTEM QUERY</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body text-center">
-        <p id="modal-address-preview" class="text-muted small">Cargando...</p>
+        <p class="text-neon-cyan mb-1">LOCATION DETECTED:</p>
+        <div class="retro-box mb-3">
+            <p id="modal-address-preview" class="m-0">Procesando coordenadas...</p>
+        </div>
         <div class="d-grid gap-2">
-            <button class="btn btn-primary" onclick="addCurrentLocToStage()">
-                <i class="fa-solid fa-route"></i> Añadir a Etapa Activa
+            <button class="btn btn-retro" onclick="addCurrentLocToStage()">
+                <i class="fa-solid fa-route"></i> ADD TO ROUTE
             </button>
-            <button class="btn btn-success" onclick="addCurrentLocAsPOI()">
-                <i class="fa-solid fa-star"></i> Guardar como Interés
+            <button class="btn btn-retro-alt" onclick="addCurrentLocAsPOI()">
+                <i class="fa-solid fa-star"></i> MARK AS POI
             </button>
         </div>
       </div>
