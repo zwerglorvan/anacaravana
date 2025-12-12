@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Viaje en Autocaravana 🚐</title>
+    <title>Anacaravana 🚐⚡</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600&display=swap" rel="stylesheet">
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -13,55 +17,60 @@
     
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body class="synthwave-theme">
 
 <div class="container-fluid p-0 h-100">
     <div class="row g-0 h-100">
         
-        <div class="col-md-4 col-lg-3 d-flex flex-column bg-light border-end" id="sidebar">
-            <div class="p-3 bg-primary text-white d-flex justify-content-between align-items-center">
-                <h5 class="m-0"><i class="fa-solid fa-route"></i> Planificador</h5>
+        <div class="col-md-4 col-lg-3 d-flex flex-column border-end border-neon" id="sidebar">
+            <div class="p-3 header-synthwave d-flex justify-content-between align-items-center">
+                <h4 class="m-0 text-neon-pink text-uppercase" style="font-family: 'Orbitron', sans-serif; letter-spacing: 2px;">
+                    <i class="fa-solid fa-van-shuttle me-2"></i> Anacaravana
+                </h4>
                 <div>
-                    <button class="btn btn-sm btn-outline-light" onclick="resetAllData()" title="Borrar todo">
-                        <i class="fa-solid fa-trash"></i>
+                    <button class="btn btn-sm btn-outline-cyan glow-box" onclick="resetAllData()" title="Nuclear Reset">
+                        <i class="fa-solid fa-bomb"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-light ms-1" onclick="generateShareLink()" title="Copiar enlace">
+                    <button class="btn btn-sm btn-outline-magenta glow-box ms-1" onclick="generateShareLink()" title="Compartir Señal">
                         <i class="fa-solid fa-share-nodes"></i>
                     </button>
                 </div>
             </div>
 
             <div class="flex-grow-1 overflow-auto p-3" id="sidebar-content">
-                <h6 class="text-muted text-uppercase small fw-bold mb-2">
-                    <i class="fa-solid fa-road"></i> Etapas
+                <h6 class="text-cyan text-uppercase small fw-bold mb-2 border-bottom border-cyan pb-1">
+                    <i class="fa-solid fa-road"></i> Itinerario
                 </h6>
-                <div id="stages-list" class="accordion mb-4"></div>
-                <button class="btn btn-outline-primary w-100 mb-4" onclick="createNewStage()">
-                    <i class="fa-solid fa-plus"></i> Nueva Etapa
+                <div id="stages-list" class="accordion mb-4 custom-accordion"></div>
+                
+                <button class="btn btn-synthwave w-100 mb-4" onclick="createNewStage()">
+                    <i class="fa-solid fa-plus"></i> NUEVA MISION
                 </button>
 
-                <h6 class="text-muted text-uppercase small fw-bold mb-2">
-                    <i class="fa-solid fa-map-pin"></i> Puntos de Interés (POIs)
+                <h6 class="text-magenta text-uppercase small fw-bold mb-2 border-bottom border-magenta pb-1">
+                    <i class="fa-solid fa-map-pin"></i> Puntos de Interés
                 </h6>
-                <div id="pois-sidebar-list" class="list-group">
-                    </div>
-                <p id="no-pois-msg" class="text-muted small fst-italic mt-2 text-center">
-                    Haz clic en el mapa para añadir puntos.
+                <div id="pois-sidebar-list" class="list-group list-group-flush">
+                </div>
+                <p id="no-pois-msg" class="text-muted small fst-italic mt-2 text-center blinking-text">
+                    >> ESPERANDO INPUT EN EL MAPA...
                 </p>
             </div>
 
-            <div class="p-3 bg-white border-top shadow-sm">
+            <div class="p-3 footer-synthwave border-top border-neon shadow-sm">
                 <div class="d-flex justify-content-between align-items-center">
-                    <strong>Total Viaje:</strong>
-                    <span id="total-km" class="badge bg-success fs-6">0 km</span>
+                    <strong class="text-white">DISTANCIA TOTAL:</strong>
+                    <span id="total-km" class="badge bg-neon-blue fs-5 text-dark orbitron-font">0.0 km</span>
                 </div>
             </div>
         </div>
 
-        <div class="col-md-8 col-lg-9 position-relative">
-            <div id="map"></div>
-            <div id="search-overlay" class="position-absolute top-0 start-50 translate-middle-x mt-3 bg-white p-2 rounded shadow d-none">
-                <small>Haz clic en el mapa para añadir puntos</small>
+        <div class="col-md-8 col-lg-9 position-relative bg-black">
+            <div class="crt-overlay pointer-events-none"></div>
+            <div id="map" class="map-synthwave"></div>
+            
+            <div id="search-overlay" class="position-absolute top-0 start-50 translate-middle-x mt-4 bg-dark-glass p-2 rounded border border-cyan shadow d-none text-white">
+                <small class="orbitron-font">HAZ CLICK PARA AÑADIR COORDENADAS</small>
             </div>
         </div>
     </div>
@@ -69,19 +78,19 @@
 
 <div class="modal fade" id="clickActionModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">¿Qué hay aquí?</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <div class="modal-content bg-dark-synth border-neon-pink">
+      <div class="modal-header border-bottom-neon">
+        <h5 class="modal-title text-neon-pink orbitron-font">¿DESTINO DETECTADO?</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body text-center">
-        <p id="modal-address-preview" class="text-muted small mb-3">Cargando...</p>
-        <div class="d-grid gap-2">
-            <button class="btn btn-primary" onclick="addCurrentLocToStage()">
-                <i class="fa-solid fa-route"></i> Añadir a la Ruta
+        <p id="modal-address-preview" class="text-cyan small mb-3 orbitron-font">Procesando...</p>
+        <div class="d-grid gap-3">
+            <button class="btn btn-outline-cyan glow-box" onclick="addCurrentLocToStage()">
+                <i class="fa-solid fa-route"></i> AÑADIR A LA RUTA
             </button>
-            <button class="btn btn-warning text-dark" onclick="addCurrentLocAsPOI()">
-                <i class="fa-solid fa-star"></i> Crear Punto de Interés
+            <button class="btn btn-outline-magenta glow-box" onclick="addCurrentLocAsPOI()">
+                <i class="fa-solid fa-star"></i> CREAR POI
             </button>
         </div>
       </div>
@@ -91,14 +100,14 @@
 
 <div class="modal fade" id="stickerModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-sm">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h6 class="modal-title">Elige un icono</h6>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      <div class="modal-content bg-dark-synth border-neon-blue">
+        <div class="modal-header border-bottom-neon">
+          <h6 class="modal-title text-cyan orbitron-font">SELECCIONAR ICONO</h6>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
-        <div class="modal-body sticker-scroll-body">
+        <div class="modal-body sticker-scroll-body custom-scrollbar">
             <div class="d-flex flex-wrap gap-2 justify-content-center" id="sticker-grid">
-                </div>
+            </div>
         </div>
       </div>
     </div>

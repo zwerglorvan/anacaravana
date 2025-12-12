@@ -1,159 +1,243 @@
+/* --- SYNTHWAVE PALETTE & FONTS --- */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600&display=swap');
+
+:root {
+    --neon-pink: #ff00ff;
+    --neon-blue: #00ffff;
+    --neon-purple: #bc13fe;
+    --dark-bg: #0b0c15;
+    --dark-panel: #151625;
+    --grid-line: rgba(0, 255, 255, 0.1);
+}
+
 html, body {
     height: 100%;
     margin: 0;
     overflow: hidden;
+    font-family: 'Rajdhani', sans-serif;
+    background-color: var(--dark-bg);
+    color: #e0e0e0;
 }
 
-#map { height: 100vh; width: 100%; z-index: 1; }
-#sidebar { height: 100vh; z-index: 2; box-shadow: 2px 0 5px rgba(0,0,0,0.1); }
+.orbitron-font { font-family: 'Orbitron', sans-serif; }
 
-/* Listas */
+/* --- MAPA CON FILTRO DARK/RETRO --- */
+#map { 
+    height: 100vh; 
+    width: 100%; 
+    z-index: 1; 
+    background: #000;
+}
+
+.map-synthwave .leaflet-tile-pane {
+    filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%) saturate(150%);
+}
+.leaflet-marker-icon, .leaflet-marker-shadow, .leaflet-popup, .leaflet-tooltip {
+    filter: invert(0%) hue-rotate(0deg) !important; 
+}
+
+/* Ocultar las cajas de instrucciones de ruta sobrantes */
+.leaflet-routing-container {
+    display: none !important;
+}
+
+/* --- ANIMACIÓN NEÓN PULSE (HOVER) --- */
+@keyframes neonPulse {
+    0% { transform: scale(1); filter: drop-shadow(0 0 5px var(--neon-pink)); }
+    50% { transform: scale(1.3); filter: drop-shadow(0 0 20px var(--neon-pink)) brightness(1.5); }
+    100% { transform: scale(1); filter: drop-shadow(0 0 5px var(--neon-pink)); }
+}
+
+/* --- SIDEBAR & LAYOUT --- */
+#sidebar { 
+    height: 100vh; 
+    z-index: 2; 
+    background: linear-gradient(180deg, var(--dark-bg) 0%, #1a0b2e 100%);
+    box-shadow: 4px 0 15px rgba(255, 0, 255, 0.2); 
+    border-right: 1px solid var(--neon-purple);
+}
+
+.border-neon { border-color: var(--neon-purple) !important; }
+.text-neon-pink { color: var(--neon-pink); text-shadow: 0 0 5px var(--neon-pink); }
+.text-cyan { color: var(--neon-blue); text-shadow: 0 0 5px var(--neon-blue); }
+.text-magenta { color: var(--neon-purple); }
+.bg-neon-blue { background-color: var(--neon-blue) !important; box-shadow: 0 0 10px var(--neon-blue); }
+
+.header-synthwave {
+    background: linear-gradient(90deg, #2b1055 0%, #000 100%);
+    border-bottom: 2px solid var(--neon-blue);
+}
+.footer-synthwave {
+    background: #000;
+    border-top: 1px solid var(--neon-pink) !important;
+}
+
+/* --- BOTONES SYNTHWAVE --- */
+.btn-synthwave {
+    background: linear-gradient(45deg, var(--neon-purple), var(--neon-pink));
+    border: none;
+    color: white;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: bold;
+    letter-spacing: 1px;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 10px rgba(188, 19, 254, 0.5);
+}
+.btn-synthwave:hover {
+    transform: scale(1.02);
+    box-shadow: 0 0 20px rgba(255, 0, 255, 0.8);
+    color: white;
+}
+
+.btn-outline-cyan {
+    border: 1px solid var(--neon-blue);
+    color: var(--neon-blue);
+    background: transparent;
+}
+.btn-outline-cyan:hover {
+    background: var(--neon-blue);
+    color: #000;
+    box-shadow: 0 0 15px var(--neon-blue);
+}
+
+.btn-outline-magenta {
+    border: 1px solid var(--neon-pink);
+    color: var(--neon-pink);
+    background: transparent;
+}
+.btn-outline-magenta:hover {
+    background: var(--neon-pink);
+    color: white;
+    box-shadow: 0 0 15px var(--neon-pink);
+}
+
+/* --- LISTAS & ACORDEÓN --- */
 .waypoint-item {
     display: flex;
     align-items: center;
-    padding: 6px;
-    background: #f8f9fa;
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.3);
     margin-bottom: 4px;
-    border-radius: 4px;
-    border: 1px solid #e9ecef;
-    cursor: grab; /* Manita abierta */
+    border: 1px solid #333;
+    border-left: 3px solid var(--neon-blue);
+    color: #fff;
+    cursor: grab;
+    transition: border-color 0.3s, background 0.3s;
+}
+.waypoint-item:hover {
+    background: rgba(0, 255, 255, 0.15);
+    border-left-color: var(--neon-pink);
 }
 
-.waypoint-item:active {
-    cursor: grabbing; /* Manita cerrada al agarrar */
-    background-color: #e9ecef; /* Pequeño feedback visual */
+.accordion-item {
+    background-color: transparent;
+    border: 1px solid rgba(255, 0, 255, 0.3);
+    margin-bottom: 10px;
+}
+.accordion-button-custom {
+    background: rgba(20, 20, 40, 0.8);
+    color: var(--neon-blue);
+}
+.accordion-header {
+    background: rgba(43, 16, 85, 0.6) !important;
+    border-bottom: 1px solid var(--neon-purple);
+}
+.accordion-body {
+    background: rgba(0,0,0,0.5);
+    color: #ddd;
+}
+.form-control {
+    background: transparent;
+    border: none;
+    color: #fff !important;
+    border-bottom: 1px solid #555;
+    border-radius: 0;
+}
+.form-control:focus {
+    background: transparent;
+    border-bottom: 1px solid var(--neon-blue);
+    box-shadow: none;
 }
 
-/* Cursor para el texto del waypoint (hacer zoom) */
-.cursor-zoom {
-    cursor: zoom-in;
+/* --- MODALES --- */
+.bg-dark-synth {
+    background-color: #1a1a2e;
+    border: 2px solid var(--neon-pink);
+    box-shadow: 0 0 20px rgba(255, 0, 255, 0.3);
 }
-.cursor-zoom:hover {
-    text-decoration: underline;
-    color: #0d6efd;
+.border-bottom-neon {
+    border-bottom: 1px solid var(--neon-blue);
 }
 
-/* Acordeón personalizado */
-.color-picker-wrapper {
-    position: relative;
-    overflow: hidden;
-    width: 20px; 
-    height: 20px;
-    border-radius: 50%;
-    border: 1px solid rgba(0,0,0,0.2);
-    cursor: pointer;
-    flex-shrink: 0;
-}
-.color-picker-input {
+/* --- EFECTOS VISUALES --- */
+.crt-overlay {
     position: absolute;
-    top: -50%; 
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    cursor: pointer;
-    padding: 0;
-    border: none;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    background-size: 100% 2px, 3px 100%;
+    z-index: 10;
+    pointer-events: none;
+}
+.blinking-text {
+    animation: blinker 1.5s linear infinite;
+}
+@keyframes blinker {
+    50% { opacity: 0; }
 }
 
-/* Marcadores Ruta */
-.custom-div-icon { background: transparent; border: none; }
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: #000; }
+::-webkit-scrollbar-thumb { background: var(--neon-purple); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--neon-pink); }
+
+/* --- MARCADORES --- */
+.marker-pulse {
+    z-index: 9999 !important;
+}
+
+.marker-pulse .marker-pin, 
+.marker-pulse .poi-sticker {
+    animation: neonPulse 1s infinite ease-in-out;
+}
 .marker-pin {
-    width: 30px; height: 30px;
-    border-radius: 50% 50% 50% 0;
-    position: absolute; transform: rotate(-45deg);
-    left: 50%; top: 50%; margin: -15px 0 0 -15px;
-    box-shadow: 2px 3px 5px rgba(0,0,0,0.3);
-    text-align: center; line-height: 30px;
-    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Animación "Pop" */
-}
-.marker-pin i { transform: rotate(45deg); color: white; font-size: 14px; margin-top: 3px; margin-left: 2px; }
-
-/* Marcadores POI (Stickers) */
-.custom-poi-icon { background: transparent; border: none; }
-
-.sticker-scroll-body {
-    max-height: 50vh;
-    overflow-y: auto;
-}
-
-.poi-sticker {
-    font-size: 30px; 
-    text-align: center;
-    background: transparent;
-    width: 40px; 
-    height: 40px;
-    border-radius: 50%;
-    border: none;
-    cursor: pointer;
-    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 0 10px var(--neon-blue);
+    border: 2px solid #fff;
     display: flex;
-    justify-content: center;
     align-items: center;
+    justify-content: center;
+    width: 30px; 
+    height: 30px;
+    border-radius: 4px; 
+    font-size: 14px;
 }
-
-.poi-sticker-img {
-    max-width: 100%;
-    max-height: 100%;
-    width: 35px;
-    height: 35px;
-    object-fit: contain;
-    margin: 0;
-    padding: 0;
+.poi-sticker {
+    filter: drop-shadow(0 0 5px rgba(255,255,255,0.7));
 }
-
-.poi-sticker-text {
-    font-size: 30px;
-    line-height: 1;
-}
-
 .poi-name-input {
-    background: transparent;
-    border: 1px solid transparent;
-    font-weight: bold;
-    font-size: 0.9rem;
-    padding: 2px 5px;
-    width: 100%;
+    color: white;
 }
-
 .poi-name-input:hover, .poi-name-input:focus {
-    background: white;
-    border-color: #ced4da;
-    outline: none;
+    background: rgba(255,255,255,0.1);
+    color: white;
+    border-color: var(--neon-blue);
+}
+.list-group-item {
+    background-color: transparent;
+    border: 1px solid #333;
+    color: #ddd;
+}
+.list-group-item:hover {
+    background-color: rgba(255, 0, 255, 0.1);
+    border-color: var(--neon-pink);
 }
 
-/* Efecto Hover (se aplica via JS añadiendo clase .marker-hover) */
-.marker-hover {
-    z-index: 1000 !important;
-}
-.marker-hover .marker-pin, 
-.marker-hover .poi-sticker {
-    transform: scale(1.3) rotate(-45deg); /* Para pin de ruta */
-    box-shadow: 0 10px 15px rgba(0,0,0,0.3);
-}
-/* Corrección rotación hover para POI (que no rotan) */
-.marker-hover .poi-sticker {
-    transform: scale(1.3);
-}
-
-/* Sidebar Responsive */
+/* Media Queries */
 @media (max-width: 768px) {
-    #sidebar { height: 45vh; order: 2; }
-    #map { height: 55vh; order: 1; }
+    #sidebar { height: 40vh; order: 2; border-top: 2px solid var(--neon-pink); }
+    #map { height: 60vh; order: 1; }
     .row { flex-direction: column; }
 }
 
-.leaflet-routing-container { display: none !important; }
-
-.transition-icon {
-    transition: transform 0.3s ease;
-}
-.accordion-button-custom.collapsed .transition-icon {
-    transform: rotate(0deg);
-}
-.accordion-button-custom:not(.collapsed) .transition-icon {
-    transform: rotate(180deg);
-}
-
-.transition-icon {
-    transition: transform 0.3s ease;
-}
+.transition-icon { transition: transform 0.3s ease; }
+.accordion-button-custom.collapsed .transition-icon { transform: rotate(0deg); }
+.accordion-button-custom:not(.collapsed) .transition-icon { transform: rotate(180deg); }

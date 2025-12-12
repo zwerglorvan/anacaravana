@@ -1,5 +1,5 @@
 /**
- * APP.JS - Planificador de Viajes en Autocaravana (Versión Final)
+ * APP.JS - Anacaravana (Versión Synthwave Refined)
  */
 
 // ==========================================
@@ -8,10 +8,11 @@
 
 const ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjRhMjZhM2EzOTYyYzQ3YjhiYzJmNzE5MjFmMDdiMjM2IiwiaCI6Im11cm11cjY0In0="; 
 
-const map = L.map('map', { center: [40.4167, -3.7037], zoom: 6 });
+const map = L.map('map', { center: [40.4167, -3.7037], zoom: 6, zoomControl: false });
+L.control.zoom({ position: 'topright' }).addTo(map);
 
 const baseLayers = {
-    "Carreteras": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OSM' }).addTo(map),
+    "Carreteras (Retro)": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OSM' }).addTo(map),
     "Satélite": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: '© Esri' }),
     "Relieve": L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { attribution: '© OpenTopoMap' })
 };
@@ -20,7 +21,7 @@ L.control.layers(baseLayers).addTo(map);
 const poiLayerGroup = L.layerGroup().addTo(map);
 
 const geocoder = L.Control.Geocoder.nominatim();
-L.Control.geocoder({ geocoder, defaultMarkGeocode: false, placeholder: "Buscar...", errorMessage: "Nada encontrado" })
+L.Control.geocoder({ geocoder, defaultMarkGeocode: false, placeholder: "Buscar destino...", errorMessage: "ERROR 404" })
 .on('markgeocode', e => { handleMapInteraction(e.geocode.center, e.geocode.name); map.setView(e.geocode.center, 14); })
 .addTo(map);
 
@@ -30,6 +31,7 @@ L.Control.geocoder({ geocoder, defaultMarkGeocode: false, placeholder: "Buscar..
 
 let appData = { stages: [], pois: [] };
 let stageRoutingControls = {}; 
+let stageMarkers = {}; // Almacena referencias a los marcadores de mapa para efectos visuales
 let activeStageId = null; 
 let tempClickLocation = null;    
 let tempLocationName = "";
@@ -80,7 +82,7 @@ function handleMapInteraction(latlng, name = null) {
         preview.innerHTML = `<strong>${name}</strong>`;
     } else {
         tempLocationName = `${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)}`;
-        preview.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando dirección...';
+        preview.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ESCANEANDO SECTOR...';
         
         geocoder.reverse(latlng, map.options.crs.scale(map.getZoom()), res => {
             if (res && res.length > 0) {
@@ -123,10 +125,10 @@ window.createNewStage = function() {
     const id = Date.now();
     appData.stages.push({
         id: id,
-        name: `Etapa ${appData.stages.length + 1}`,
+        name: `MISION ${appData.stages.length + 1}`,
         waypoints: [],
         distance: 0,
-        color: getRandomColor(),
+        color: getRandomNeonColor(),
         visible: true, 
         isOpen: true   
     });
@@ -144,13 +146,13 @@ window.setActiveStage = function(id) {
 
 function highlightActiveStageCard(id) {
     document.querySelectorAll('.accordion-item').forEach(el => {
-        el.classList.remove('border-primary', 'shadow-sm');
-        el.classList.add('border');
+        el.classList.remove('border-neon-active');
+        el.style.borderColor = 'rgba(255, 0, 255, 0.3)';
     });
     const activeCard = document.getElementById(`stage-card-${id}`);
     if(activeCard) {
-        activeCard.classList.remove('border');
-        activeCard.classList.add('border-primary', 'shadow-sm');
+        activeCard.style.borderColor = '#00ffff';
+        activeCard.style.boxShadow = '0 0 10px rgba(0, 255, 255, 0.2)';
     }
 }
 
@@ -175,8 +177,9 @@ window.updateStageColor = function(id, color) {
 };
 
 window.deleteStage = function(id) {
-    if(!confirm("¿Borrar esta etapa?")) return;
+    if(!confirm("¿ABORTAR MISIÓN? Esta etapa se perderá.")) return;
     if (stageRoutingControls[id]) { map.removeControl(stageRoutingControls[id]); delete stageRoutingControls[id]; }
+    delete stageMarkers[id]; // Limpiar referencias de marcadores
     appData.stages = appData.stages.filter(s => s.id !== id);
     if (activeStageId === id) activeStageId = null;
     renderSidebar();
@@ -197,9 +200,7 @@ window.removeWaypoint = function(stageId, idx) {
 
 function renderSidebar() {
     const container = document.getElementById('stages-list');
-    
     const scrollTop = container.parentElement ? container.parentElement.scrollTop : 0;
-    
     container.innerHTML = '';
     let totalTripKm = 0;
 
@@ -209,15 +210,17 @@ function renderSidebar() {
         const collapseId = `collapse-${stage.id}`; 
         
         let waypointsHtml = stage.waypoints.length === 0 
-            ? '<div class="text-muted small fst-italic p-2">Sin paradas.</div>'
+            ? '<div class="text-muted small fst-italic p-2">>> SIN WAYPOINTS</div>'
             : stage.waypoints.map((wp, idx) => `
-                <div class="waypoint-item small" data-index="${idx}">
-                    <span class="badge ${idx===0?'bg-success':idx===stage.waypoints.length-1?'bg-dark':'bg-secondary'} me-2">
-                        ${idx===0?'Inicio':idx===stage.waypoints.length-1?'Fin':idx}
+                <div class="waypoint-item small" data-index="${idx}" 
+                     onmouseenter="highlightWaypoint(${stage.id}, ${idx}, true)" 
+                     onmouseleave="highlightWaypoint(${stage.id}, ${idx}, false)">
+                    <span class="badge ${idx===0?'bg-success':idx===stage.waypoints.length-1?'bg-danger':'bg-secondary'} me-2 border border-white">
+                        ${idx===0?'START':idx===stage.waypoints.length-1?'END':idx}
                     </span>
                     <span class="text-truncate flex-grow-1 cursor-zoom" 
                           onclick="map.setView([${wp.latLng.lat}, ${wp.latLng.lng}], 16)" 
-                          title="Ver en mapa">
+                          title="Zoom">
                         ${wp.name}
                     </span>
                     <button class="btn btn-link text-danger p-0 ms-2" onclick="removeWaypoint(${stage.id}, ${idx})"><i class="fas fa-times"></i></button>
@@ -225,31 +228,34 @@ function renderSidebar() {
 
         const card = document.createElement('div');
         card.id = `stage-card-${stage.id}`;
-        card.className = `accordion-item mb-2 border ${isActive ? 'border-primary shadow-sm' : ''}`;
+        const borderStyle = isActive ? 'border-color: #00ffff; box-shadow: 0 0 8px rgba(0,255,255,0.4);' : '';
+        card.className = `accordion-item mb-2`;
+        card.style.cssText = borderStyle;
         
         card.innerHTML = `
-            <div class="accordion-header d-flex align-items-center border-bottom bg-light p-1" 
+            <div class="accordion-header d-flex align-items-center p-1" 
                  onclick="setActiveStage(${stage.id})" 
                  style="cursor: pointer;">
                  
-                <button class="btn btn-sm text-secondary" onclick="toggleStageVisibility(event, ${stage.id})">
-                    <i class="fa-solid ${stage.visible ? 'fa-eye text-success' : 'fa-eye-slash'}"></i>
+                <button class="btn btn-sm" onclick="toggleStageVisibility(event, ${stage.id})">
+                    <i class="fa-solid ${stage.visible ? 'fa-eye text-neon-pink' : 'fa-eye-slash text-muted'}"></i>
                 </button>
                 
-                <div class="color-picker-wrapper ms-2" onclick="event.stopPropagation()">
+                <div class="color-picker-wrapper ms-2" onclick="event.stopPropagation()" style="border-color: #fff;">
                     <input type="color" class="color-picker-input" value="${stage.color}" oninput="updateStageColor(${stage.id}, this.value)">
                 </div>
                 
                 <div class="flex-grow-1 ms-2">
-                    <input type="text" class="form-control form-control-sm fw-bold border-0 bg-transparent p-0" 
+                    <input type="text" class="form-control form-control-sm fw-bold p-0 orbitron-font" 
+                           style="color: ${isActive ? '#00ffff' : '#fff'} !important;"
                            value="${stage.name}" 
                            onclick="setActiveStage(${stage.id})" 
                            onchange="updateStageName(${stage.id}, this.value)">
                 </div>
                 
-                <span class="badge bg-light text-dark border ms-2">${stage.distance.toFixed(1)} km</span>
+                <span class="badge bg-transparent border border-secondary text-light ms-2">${stage.distance.toFixed(1)} km</span>
                 
-                <button class="btn btn-link text-dark p-0 ms-2 me-2 accordion-button-custom ${stage.isOpen ? '' : 'collapsed'}" 
+                <button class="btn btn-link text-light p-0 ms-2 me-2 accordion-button-custom ${stage.isOpen ? '' : 'collapsed'}" 
                         type="button"
                         data-bs-toggle="collapse" 
                         data-bs-target="#${collapseId}"
@@ -259,25 +265,22 @@ function renderSidebar() {
             </div>
             
             <div id="${collapseId}" class="accordion-collapse collapse ${stage.isOpen ? 'show' : ''}">
-                <div class="accordion-body p-2 bg-white">
+                <div class="accordion-body p-2">
                     <div id="wp-list-${stage.id}" class="list-group mb-2">${waypointsHtml}</div>
                     <div class="d-flex justify-content-end gap-2">
-                         <button class="btn btn-sm btn-outline-danger" onclick="deleteStage(${stage.id})"><i class="fas fa-trash"></i></button>
+                         <button class="btn btn-sm btn-outline-danger" onclick="deleteStage(${stage.id})"><i class="fas fa-trash"></i> ELIMINAR</button>
                     </div>
                 </div>
             </div>`;
         container.appendChild(card);
 
-        // Listeners para sincronizar estado sin repintar
         const collapseElement = document.getElementById(collapseId);
-        
         collapseElement.addEventListener('show.bs.collapse', () => {
             stage.isOpen = true;
             activeStageId = stage.id;
             highlightActiveStageCard(stage.id);
             saveData();
         });
-        
         collapseElement.addEventListener('hide.bs.collapse', () => {
             stage.isOpen = false;
             saveData();
@@ -305,13 +308,10 @@ function renderSidebar() {
 // 6. GESTIÓN DE POIS (IMÁGENES Y EMOJIS)
 // ==========================================
 
-// Helper: Distingue si es Emoji (texto) o Ruta de Archivo/URL
 function getIconHtml(icon) {
-    // Si la cadena contiene un punto (.), una barra (/), o es muy larga, asumimos que es una ruta/URL
     if (icon && (icon.includes('.') || icon.includes('/'))) {
         return `<img src="${icon}" class="poi-sticker-img" alt="POI">`;
     } else {
-        // De lo contrario, lo tratamos como un emoji de texto
         return `<span class="poi-sticker-text">${icon || '⭐'}</span>`;
     }
 }
@@ -329,30 +329,31 @@ function renderPoiSidebar() {
             const item = document.createElement('div');
             item.className = 'list-group-item list-group-item-action d-flex align-items-center justify-content-between p-2';
             
+            // Añadidos eventos de mouse para el efecto pulsatil
+            item.addEventListener('mouseenter', () => highlightMarker(poi.id, true));
+            item.addEventListener('mouseleave', () => highlightMarker(poi.id, false));
+
             item.innerHTML = `
                 <div class="d-flex align-items-center flex-grow-1 overflow-hidden me-2">
                     <span class="fs-4 me-2" style="cursor:pointer;" onclick="focusOnPoi(${poi.id})">
                         ${getIconHtml(poi.icon)}
                     </span>
                     
-                    <input type="text" class="poi-name-input" 
+                    <input type="text" class="poi-name-input bg-transparent border-0" 
                            value="${poi.name}" 
                            onchange="updatePoiName(${poi.id}, this.value)"
                            onclick="event.stopPropagation()">
                 </div>
                 
                 <div class="d-flex align-items-center">
-                    <button class="btn btn-sm btn-light text-primary me-1" title="Cambiar Icono" onclick="openStickerSelector(${poi.id})">
+                    <button class="btn btn-sm btn-outline-cyan me-1" title="Cambiar Icono" onclick="openStickerSelector(${poi.id})">
                         <i class="fa-solid fa-icons"></i>
                     </button>
-                    <button class="btn btn-sm btn-light text-danger" title="Borrar" onclick="deletePoi(${poi.id})">
+                    <button class="btn btn-sm btn-outline-danger" title="Borrar" onclick="deletePoi(${poi.id})">
                         <i class="fa-solid fa-times"></i>
                     </button>
                 </div>
             `;
-            
-            item.addEventListener('mouseenter', () => highlightMarker(poi.id, true));
-            item.addEventListener('mouseleave', () => highlightMarker(poi.id, false));
             container.appendChild(item);
         });
     }
@@ -375,29 +376,20 @@ function renderPOIsOnMap() {
         const marker = L.marker(poi.latLng, {
             icon: L.divIcon({
                 className: 'custom-poi-icon',
-                html: `<div class="poi-sticker shadow-sm">${iconHtmlContent}</div>`,
+                html: `<div class="poi-sticker">${iconHtmlContent}</div>`,
                 iconSize: [40, 40],
                 iconAnchor: [20, 40],
                 popupAnchor: [0, -40]
             })
         });
 
-        marker.on('click', () => {
-            map.setView(poi.latLng, 16); 
-        });
-        marker.on('mouseover', function() { this._icon.classList.add('marker-hover'); });
-        marker.on('mouseout', function() { this._icon.classList.remove('marker-hover'); });
-
+        // Solo mostrar popup con nombre, sin botones, y sin zoom automático
         marker.bindPopup(`
-            <div class="text-center">
-                <h6>${poi.name}</h6>
-                <div class="btn-group btn-group-sm">
-                    <button class="btn btn-primary" onclick="convertPoiToStop(${poi.id})">Añadir a Ruta</button>
-                    <button class="btn btn-outline-secondary" onclick="openStickerSelector(${poi.id})">Icono</button>
-                </div>
+            <div class="text-center orbitron-font" style="color: #000; font-size: 1.1em; font-weight: bold;">
+                ${poi.name}
             </div>
         `);
-
+        
         marker.poiId = poi.id; 
         marker.addTo(poiLayerGroup);
     });
@@ -425,14 +417,13 @@ window.openStickerSelector = function(id) {
     currentPoiEditId = id;
     const grid = document.getElementById('sticker-grid');
     if (typeof STICKERS === 'undefined') {
-        console.error("Falta js/stickers.js");
         grid.innerHTML = "<p class='text-danger'>Error: stickers.js no cargado</p>";
         return;
     }
 
     grid.innerHTML = STICKERS.map(s => {
         const content = getIconHtml(s);
-        return `<button class="btn btn-outline-light border shadow-sm fs-4 p-2" onclick="selectSticker('${s}')" style="line-height:1; min-height:50px; min-width:50px;">${content}</button>`;
+        return `<button class="btn btn-outline-light border border-secondary shadow-sm fs-4 p-2" onclick="selectSticker('${s}')" style="line-height:1; min-height:50px; min-width:50px; background: rgba(0,0,0,0.5);">${content}</button>`;
     }).join('');
     new bootstrap.Modal(document.getElementById('stickerModal')).show();
 };
@@ -451,31 +442,37 @@ window.selectSticker = function(sticker) {
 };
 
 // ==========================================
-// 7. UTILIDADES
+// 7. UTILIDADES VISUALES (EFECTO NEÓN)
 // ==========================================
 
+// Para POIs
 function highlightMarker(id, isActive) {
     poiLayerGroup.eachLayer(layer => {
         if(layer.poiId === id) {
-            if(isActive) layer._icon.classList.add('marker-hover');
-            else layer._icon.classList.remove('marker-hover');
+            if(isActive) layer._icon.classList.add('marker-pulse');
+            else layer._icon.classList.remove('marker-pulse');
         }
     });
 }
 
+// Para Waypoints (NUEVO)
+window.highlightWaypoint = function(stageId, index, isActive) {
+    if (stageMarkers[stageId] && stageMarkers[stageId][index]) {
+        const marker = stageMarkers[stageId][index];
+        if (marker._icon) {
+            if (isActive) marker._icon.classList.add('marker-pulse');
+            else marker._icon.classList.remove('marker-pulse');
+        }
+    }
+};
+
 window.convertPoiToStop = function(id) {
-    if (!activeStageId) { alert("Selecciona una etapa primero"); return; }
-    const poi = appData.pois.find(p => p.id === id);
-    const stage = appData.stages.find(s => s.id === activeStageId);
-    stage.waypoints.push({ latLng: poi.latLng, name: poi.name });
-    refreshMapRoute(activeStageId); 
-    renderSidebar();
-    saveData();
-    map.closePopup();
+    // Vestigio de funcionalidad anterior, mantenemos por compatibilidad si se reactiva,
+    // pero ya no se llama desde el popup.
 };
 
 window.resetAllData = function() {
-    if(confirm("¿Estás seguro de BORRAR TODO el viaje? No se puede deshacer.")) {
+    if(confirm("⚠ PELIGRO: ¿BORRAR TODA LA INFORMACIÓN?")) {
         localStorage.removeItem('camperViaje');
         location.reload();
     }
@@ -484,12 +481,13 @@ window.resetAllData = function() {
 window.generateShareLink = function() {
     const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(appData));
     const url = window.location.origin + window.location.pathname + '#route=' + compressed;
-    navigator.clipboard.writeText(url).then(() => alert("✅ ¡Enlace copiado! Puedes compartirlo."));
+    navigator.clipboard.writeText(url).then(() => alert("✅ Enlace copiado al portapapeles"));
 };
 
 function loadAppData(json) {
     Object.values(stageRoutingControls).forEach(c => map.removeControl(c));
     stageRoutingControls = {};
+    stageMarkers = {}; // Reset markers
     routingQueue = []; 
     
     appData = json;
@@ -501,7 +499,10 @@ function loadAppData(json) {
     renderSidebar();
 }
 
-function getRandomColor() { return '#' + Math.floor(Math.random()*16777215).toString(16); }
+function getRandomNeonColor() { 
+    const neonColors = ['#ff00ff', '#00ffff', '#ffff00', '#ff0099', '#39ff14', '#bc13fe'];
+    return neonColors[Math.floor(Math.random() * neonColors.length)];
+}
 
 // ==========================================
 // 8. RUTAS (MOTOR DE ENRUTAMIENTO)
@@ -523,6 +524,7 @@ async function processRoutingQueue() {
     if (stageRoutingControls[stageId]) { 
         map.removeControl(stageRoutingControls[stageId]); 
         delete stageRoutingControls[stageId]; 
+        delete stageMarkers[stageId];
     }
 
     if (!stage || !stage.visible || stage.waypoints.length < 2) {
@@ -534,6 +536,9 @@ async function processRoutingQueue() {
         return;
     }
     
+    // Inicializar array de marcadores para esta etapa
+    stageMarkers[stageId] = [];
+
     const ORSRouter = new L.Routing.openrouteserviceV2(ORS_API_KEY, { profile: 'driving-car' });
 
     const control = L.Routing.control({
@@ -548,7 +553,7 @@ async function processRoutingQueue() {
                 draggable: true,
                 icon: L.divIcon({
                     className: 'custom-div-icon',
-                    html: `<div class='marker-pin' style='background-color: ${stage.color};'><i class='fa-solid ${iconClass}'></i></div>`,
+                    html: `<div class='marker-pin' style='background-color: ${stage.color}; box-shadow: 0 0 10px ${stage.color};'><i class='fa-solid ${iconClass}'></i></div>`,
                     iconSize: [30, 42], iconAnchor: [15, 42], popupAnchor: [0, -38]
                 })
             });
@@ -558,14 +563,18 @@ async function processRoutingQueue() {
                 refreshMapRoute(stage.id); 
             });
             
-            m.bindPopup(`<div class="text-center fw-bold">${stage.waypoints[i].name}</div>`);
+            // --- CAMBIO AQUÍ: Tipografía Orbitron para el popup de la ruta ---
+            m.bindPopup(`
+                <div class="text-center orbitron-font" style="color: #000; font-size: 1.1em; font-weight: bold;">
+                    ${stage.waypoints[i].name}
+                </div>
+            `);
             
-            m.on('mouseover', function() { this._icon.classList.add('marker-hover'); });
-            m.on('mouseout', function() { this._icon.classList.remove('marker-hover'); });
+            stageMarkers[stageId][i] = m;
 
             return m;
         },
-        lineOptions: { styles: [{color: stage.color, opacity: 0.8, weight: 5}], addWaypoints: false }
+        lineOptions: { styles: [{color: stage.color, opacity: 0.9, weight: 6, className: 'neon-path'}], addWaypoints: false }
     }).addTo(map);
 
     stageRoutingControls[stageId] = control;
@@ -575,8 +584,6 @@ async function processRoutingQueue() {
         saveData();
         if (!skipSidebar) renderSidebar();
         else {
-            const badge = document.getElementById(`km-badge-${stage.id}`);
-            if(badge) badge.innerText = stage.distance.toFixed(1) + " km";
             const totalKm = appData.stages.reduce((acc, s) => acc + (s.visible ? s.distance : 0), 0);
             document.getElementById('total-km').innerText = totalKm.toFixed(1) + " km";
         }
@@ -590,5 +597,4 @@ async function processRoutingQueue() {
     });
 }
 
-// INICIAR
 initApp();
