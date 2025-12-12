@@ -314,7 +314,7 @@ async function processRoutingQueue() {
         return;
     }
     
-    const ORSRouter = new L.Routing.OpenRouteServiceV2(
+    const ORSRouter = new L.Routing.openrouteserviceV2(
         'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjRhMjZhM2EzOTYyYzQ3YjhiYzJmNzE5MjFmMDdiMjM2IiwiaCI6Im11cm11cjY0In0=',
         {
             serviceUrl: 'https://api.openrouteservice.org/v2/directions/',
