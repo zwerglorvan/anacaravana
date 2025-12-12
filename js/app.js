@@ -6,10 +6,8 @@
 // 1. CONFIGURACIÓN E INICIALIZACIÓN
 // ==========================================
 
-// IMPORTANTE: Pon aquí tu API KEY real de OpenRouteService (cadena de texto normal)
-// La que tenías oculta en el Base64 parecía ser esta: "5b3ce3597851110001cf6248"
-// Si no funciona, regístrate en openrouteservice.org y genera una nueva "Standard Key".
-const ORS_API_KEY = "5b3ce3597851110001cf6248"; 
+// Obtenida de Heigit (ORS)
+const ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjRhMjZhM2EzOTYyYzQ3YjhiYzJmNzE5MjFmMDdiMjM2IiwiaCI6Im11cm11cjY0In0="; 
 
 const map = L.map('map', {
     center: [40.416775, -3.703790],
