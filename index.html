@@ -24,10 +24,15 @@
         
         <div class="col-md-4 col-lg-3 d-flex flex-column border-end border-neon" id="sidebar">
             <div class="p-3 header-synthwave d-flex justify-content-between align-items-center">
-                <h4 class="m-0 text-neon-pink text-uppercase" style="font-family: 'Orbitron', sans-serif; letter-spacing: 2px;">
-                    <i class="fa-solid fa-van-shuttle me-2"></i> Anacaravana
-                </h4>
-                <div>
+                <div class="d-flex align-items-center overflow-hidden" style="min-width: 0;">
+                    <h4 class="m-0 text-neon-pink text-uppercase text-truncate" style="font-family: 'Orbitron', sans-serif; letter-spacing: 2px;">
+                        <i class="fa-solid fa-shuttle-space me-2"></i> 
+                        <span>Anacaravana</span>
+                        <small class="text-cyan ms-2" style="text-shadow: none; opacity: 0.8;">v1.1</small>
+                    </h4>
+                </div>
+                
+                <div class="flex-shrink-0 ms-2">
                     <button class="btn btn-sm btn-outline-cyan glow-box" onclick="resetAllData()" title="Nuclear Reset">
                         <i class="fa-solid fa-bomb"></i>
                     </button>

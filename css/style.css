@@ -243,3 +243,49 @@ html, body {
 .transition-icon { transition: transform 0.3s ease; }
 .accordion-button-custom.collapsed .transition-icon { transform: rotate(0deg); }
 .accordion-button-custom:not(.collapsed) .transition-icon { transform: rotate(180deg); }
+
+/* --- FIX DE ANCHO INTERMEDIO (TABLET/DESKTOP PEQUEÑO) --- */
+/* Cuando el sidebar es estrecho (col-md-4/col-lg-3) pero no móvil */
+@media (min-width: 768px) and (max-width: 1200px) {
+    .header-synthwave h4 {
+        font-size: 1.1rem; /* Reducimos fuente para que quepa mejor */
+    }
+    .header-synthwave h4 i {
+        font-size: 0.9em;
+    }
+    .header-synthwave .btn {
+        padding: 0.25rem 0.4rem; /* Botones un poco más compactos */
+    }
+}
+
+/* --- RESPONSIVE FIXES PARA MÓVIL --- */
+@media (max-width: 576px) {
+    /* Reducimos el padding del contenedor de la cabecera */
+    .header-synthwave {
+        padding: 0.5rem !important; /* Menos espacio alrededor */
+    }
+
+    /* Ajustamos el tamaño del título principal */
+    .header-synthwave h4 {
+        font-size: 1.1rem !important; /* Más pequeño */
+        letter-spacing: 1px !important; /* Juntamos un poco las letras */
+    }
+    
+    /* El icono del cohete un poco más pequeño */
+    .header-synthwave h4 i {
+        font-size: 0.9em;
+        margin-right: 4px !important; /* Menos margen con el texto */
+    }
+
+    /* El "v1.1" más discreto */
+    .header-synthwave small {
+        font-size: 0.7rem !important;
+        margin-left: 4px !important;
+    }
+
+    /* Los botones de la derecha más compactos */
+    .header-synthwave .btn {
+        padding: 2px 6px !important; /* Botones más finos */
+        font-size: 0.8rem !important;
+    }
+}
