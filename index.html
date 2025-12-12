@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nuestro Viaje en Autocaravana 🚐</title>
+    <title>Planificador de Viajes</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -22,21 +22,20 @@
             <div class="p-3 bg-primary text-white d-flex justify-content-between align-items-center">
                 <h5 class="m-0"><i class="fa-solid fa-route"></i> Planificador</h5>
                 <div>
-                    <button class="btn btn-sm btn-outline-light me-1" onclick="generateShareLink()" title="Copiar enlace del viaje">
+                    <button class="btn btn-sm btn-outline-light me-1" onclick="generateShareLink()" title="Copiar enlace">
                         <i class="fa-solid fa-share-nodes"></i>
                     </button>
-                    
-                    <button class="btn btn-sm btn-outline-light" onclick="exportData()" title="Guardar Viaje"><i class="fa-solid fa-download"></i></button>
-                    <label class="btn btn-sm btn-outline-light mb-0" title="Cargar Viaje">
+                    <button class="btn btn-sm btn-outline-light" onclick="exportData()" title="Descargar JSON">
+                        <i class="fa-solid fa-download"></i>
+                    </button>
+                    <label class="btn btn-sm btn-outline-light mb-0" title="Cargar JSON">
                         <i class="fa-solid fa-upload"></i> <input type="file" id="importFile" hidden onchange="importData(this)">
                     </label>
                 </div>
             </div>
 
             <div class="flex-grow-1 overflow-auto p-3" id="stages-container">
-                <h6 class="text-muted text-uppercase small">Etapas del Viaje</h6>
-                <div id="stages-list" class="accordion">
-                    </div>
+                <div id="stages-list" class="accordion"></div>
                 <button class="btn btn-outline-primary w-100 mt-3" onclick="createNewStage()">
                     <i class="fa-solid fa-plus"></i> Nueva Etapa
                 </button>
@@ -52,7 +51,6 @@
 
         <div class="col-md-8 col-lg-9 position-relative">
             <div id="map"></div>
-            
             <div id="search-overlay" class="position-absolute top-0 start-50 translate-middle-x mt-3 bg-white p-2 rounded shadow d-none">
                 <small>Haz clic en el mapa para añadir puntos</small>
             </div>
@@ -64,17 +62,17 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">¿Qué quieres añadir aquí?</h5>
+        <h5 class="modal-title">¿Qué quieres hacer aquí?</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body text-center">
-        <p id="modal-address-preview" class="text-muted small">Cargando dirección...</p>
+        <p id="modal-address-preview" class="text-muted small">Cargando...</p>
         <div class="d-grid gap-2">
             <button class="btn btn-primary" onclick="addCurrentLocToStage()">
-                <i class="fa-solid fa-route"></i> Añadir a la Etapa Activa
+                <i class="fa-solid fa-route"></i> Añadir a Etapa Activa
             </button>
             <button class="btn btn-success" onclick="addCurrentLocAsPOI()">
-                <i class="fa-solid fa-star"></i> Crear Punto de Interés (POI)
+                <i class="fa-solid fa-star"></i> Guardar como Interés
             </button>
         </div>
       </div>
