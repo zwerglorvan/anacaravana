@@ -314,16 +314,17 @@ async function processRoutingQueue() {
         return;
     }
     
-    // Configuración del router de GraphHopper
-    const graphHopperRouter = L.Routing.graphHopper(
-        '427febfe-98c2-4c69-8601-f1b4fa8ed355', 
+    const ORSRouter = new L.Routing.OpenRouteServiceV2(
+        'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjRhMjZhM2EzOTYyYzQ3YjhiYzJmNzE5MjFmMDdiMjM2IiwiaCI6Im11cm11cjY0In0=',
         {
-            serviceUrl: 'https://graphhopper.com/api/1/route'
+            serviceUrl: 'https://api.openrouteservice.org/v2/directions/',
+            profile: 'driving-car',
+            geometry_simplify: true
         }
     );
 
     const control = L.Routing.control({
-        router: graphHopperRouter,
+        router: ORSRouter,
         waypoints: stage.waypoints.map(w => w.latLng),
         routeWhileDragging: false, show: false, addWaypoints: false,
         createMarker: (i, wp, nWps) => {
@@ -354,7 +355,6 @@ async function processRoutingQueue() {
             document.getElementById('total-km').innerText = appData.stages.reduce((acc, s) => acc + (s.visible ? s.distance : 0), 0).toFixed(1) + " km";
         }
         
-        // Retraso optimizado para GraphHopper: 100ms
         setTimeout(() => {
             isProcessingQueue = false;
             processRoutingQueue();
