@@ -182,7 +182,9 @@ html, body {
     animation: blinker 1.5s linear infinite;
 }
 @keyframes blinker {
-    50% { opacity: 0; }
+    0% { opacity: 1; }
+    50% { opacity: 0.3; } 
+    100% { opacity: 1; }
 }
 
 ::-webkit-scrollbar { width: 8px; }

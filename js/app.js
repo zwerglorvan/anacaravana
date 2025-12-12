@@ -415,16 +415,61 @@ window.deletePoi = function(id) {
 
 window.openStickerSelector = function(id) {
     currentPoiEditId = id;
-    const grid = document.getElementById('sticker-grid');
+    const container = document.getElementById('sticker-grid');
+    
     if (typeof STICKERS === 'undefined') {
-        grid.innerHTML = "<p class='text-danger'>Error: stickers.js no cargado</p>";
+        container.innerHTML = "<p class='text-danger'>Error: stickers.js no cargado</p>";
         return;
     }
 
-    grid.innerHTML = STICKERS.map(s => {
-        const content = getIconHtml(s);
-        return `<button class="btn btn-outline-light border border-secondary shadow-sm fs-4 p-2" onclick="selectSticker('${s}')" style="line-height:1; min-height:50px; min-width:50px; background: rgba(0,0,0,0.5);">${content}</button>`;
-    }).join('');
+    // Limpiamos clases flex anteriores para que el acordeón se vea bien (en bloque)
+    container.className = ''; 
+    container.innerHTML = '<div class="accordion" id="stickersAccordion"></div>';
+    
+    const accordionContainer = container.querySelector('.accordion');
+    let index = 0;
+
+    for (const [category, icons] of Object.entries(STICKERS)) {
+        if (icons.length === 0) continue; // Saltamos categorías vacías
+
+        const collapseId = `collapseSticker${index}`;
+        const headerId = `headingSticker${index}`;
+        
+        // Creamos el item del acordeón con estilo oscuro/synthwave
+        const itemHtml = `
+            <div class="accordion-item" style="border-color: var(--neon-purple); background: transparent;">
+                <h2 class="accordion-header" id="${headerId}">
+                    <button class="accordion-button ${index !== 0 ? 'collapsed' : ''} orbitron-font text-cyan" 
+                            type="button" 
+                            data-bs-toggle="collapse" 
+                            data-bs-target="#${collapseId}" 
+                            style="background: rgba(20, 20, 40, 0.9); text-shadow: 0 0 5px var(--neon-blue);">
+                        ${category.toUpperCase()}
+                    </button>
+                </h2>
+                <div id="${collapseId}" 
+                     class="accordion-collapse collapse ${index === 0 ? 'show' : ''}" 
+                     data-bs-parent="#stickersAccordion">
+                    <div class="accordion-body bg-dark">
+                        <div class="d-flex flex-wrap gap-2 justify-content-center">
+                            ${icons.map(s => {
+                                const content = getIconHtml(s);
+                                return `<button class="btn btn-outline-light border border-secondary shadow-sm fs-4 p-2" 
+                                                onclick="selectSticker('${s}')" 
+                                                style="line-height:1; min-height:50px; min-width:50px; background: rgba(0,0,0,0.5);">
+                                            ${content}
+                                        </button>`;
+                            }).join('')}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        accordionContainer.insertAdjacentHTML('beforeend', itemHtml);
+        index++;
+    }
+
     new bootstrap.Modal(document.getElementById('stickerModal')).show();
 };
 
