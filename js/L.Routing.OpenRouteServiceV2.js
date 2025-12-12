@@ -17,26 +17,24 @@
         },
 
         route: function (waypoints, callback, context) {
-            // Abortar si no hay suficientes puntos
+            // Validar que hay suficientes puntos
             if (waypoints.length < 2) {
-                return this;
+                return;
             }
 
-            // ORS espera [longitud, latitud]
             const coordinates = waypoints.map(function (wp) {
                 return [wp.latLng.lng, wp.latLng.lat];
             });
 
-            // Preparar el cuerpo de la petición
+            // Preparar el cuerpo de la petición (JSON)
             const body = {
                 coordinates: coordinates,
-                ...this._orsOptions 
+                ...this._orsOptions // Mezclar opciones (profile, format, etc)
             };
             
-            // Limpieza de parámetros internos
+            // Eliminar parámetros que no van en el body si se colaron
             delete body.serviceUrl;
 
-            // Construir URL (perfil por defecto: driving-car)
             const url = this.options.serviceUrl + (this._orsOptions.profile || 'driving-car') + '/json';
 
             fetch(url, {
@@ -58,10 +56,10 @@
                 this._routeDone(data, waypoints, callback, context);
             })
             .catch(err => {
-                console.error('Error ORS:', err);
+                console.error('Error en OpenRouteService:', err);
                 callback.call(context, {
                     status: -1,
-                    message: err.error ? err.error.message : 'Error HTTP'
+                    message: err.error ? err.error.message : 'Error de conexión HTTP'
                 });
             });
 
@@ -80,43 +78,41 @@
             }
 
             const alts = response.routes.map(route => {
-                // Decodificar geometría devolviendo objetos L.latLng
+                // Decodificar geometría
                 const coordinates = this._decodePolyline(route.geometry);
                 
-                // Procesar instrucciones
-                const instructions = [];
-                if(route.segments) {
-                    route.segments.forEach(segment => {
-                        if(segment.steps) {
-                            segment.steps.forEach(step => {
-                                instructions.push({
-                                    text: step.instruction,
-                                    distance: step.distance,
-                                    time: step.duration,
-                                    type: step.type 
-                                });
-                            });
-                        }
-                    });
-                }
+                // Procesar instrucciones (maniobras)
+                const instructions = route.segments.reduce((acc, segment) => {
+                    return acc.concat(segment.steps.map(step => {
+                        return {
+                            text: step.instruction,
+                            distance: step.distance,
+                            time: step.duration,
+                            type: step.type // Opcional: traducir tipos de ORS a iconos LRM
+                        };
+                    }));
+                }, []);
+
+                // Crear waypoints reales basados en la respuesta
+                const actualWaypoints = inputWaypoints; // Simplificación: usamos los de entrada
 
                 return {
-                    name: 'Ruta Óptima',
-                    coordinates: coordinates, // Aquí está la clave para que se dibuje
+                    name: 'Ruta principal',
+                    coordinates: coordinates,
                     instructions: instructions,
                     summary: {
                         totalDistance: route.summary.distance,
                         totalTime: route.summary.duration
                     },
                     inputWaypoints: inputWaypoints,
-                    waypoints: inputWaypoints
+                    waypoints: actualWaypoints
                 };
             });
 
             callback.call(context, null, alts);
         },
 
-        // CORRECCIÓN IMPORTANTE EN ESTA FUNCIÓN
+        // Algoritmo de decodificación de polilíneas de Google/ORS
         _decodePolyline: function (str, precision) {
             let index = 0,
                 lat = 0,
@@ -148,8 +144,7 @@
                 longitude_change = ((result & 1) ? ~(result >> 1) : (result >> 1));
                 lat += latitude_change;
                 lng += longitude_change;
-                
-                coordinates.push(L.latLng(lat / factor, lng / factor));
+                coordinates.push([lat / factor, lng / factor]);
             }
             return coordinates;
         }

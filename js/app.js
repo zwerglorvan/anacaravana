@@ -1,129 +1,121 @@
 /**
- * APP.JS - Planificador de Viajes en Autocaravana (Versión Final)
+ * APP.JS - Planificador de Viajes en Autocaravana (Refactorizado)
  */
 
 // ==========================================
 // 1. CONFIGURACIÓN E INICIALIZACIÓN
 // ==========================================
 
+// Obtenida de Heigit (ORS)
 const ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjRhMjZhM2EzOTYyYzQ3YjhiYzJmNzE5MjFmMDdiMjM2IiwiaCI6Im11cm11cjY0In0="; 
 
-const map = L.map('map', { center: [40.4167, -3.7037], zoom: 6, zoomControl: false });
-L.control.zoom({position: 'topright'}).addTo(map);
+const map = L.map('map', {
+    center: [40.416775, -3.703790],
+    zoom: 6
+});
 
+// Capas base
 const baseLayers = {
-    //"Carreteras": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OSM' }).addTo(map),
-    //"Satélite": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: '© Esri' }),
-    //"Relieve": L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { attribution: '© OpenTopoMap' })
-    "Cyber Dark": L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: 'abcd',
-        maxZoom: 20
+    "Carreteras": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap'
     }).addTo(map),
-    "Matrix (Voyager)": L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; CARTO'
-    }),
-    "Satellite": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    "Satélite": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         attribution: 'Tiles &copy; Esri'
-    })    
+    }),
+    "Relieve": L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenTopoMap'
+    })
 };
-L.control.layers(baseLayers, null, {position: 'bottomright'}).addTo(map);
+L.control.layers(baseLayers).addTo(map);
 
 const poiLayerGroup = L.layerGroup().addTo(map);
 
+// Geocoder
 const geocoder = L.Control.Geocoder.nominatim();
-L.Control.geocoder({ geocoder, defaultMarkGeocode: false, placeholder: "Buscar...", errorMessage: "Nada encontrado" })
-.on('markgeocode', e => { handleMapInteraction(e.geocode.center, e.geocode.name); map.setView(e.geocode.center, 14); })
+L.Control.geocoder({
+    geocoder: geocoder,
+    defaultMarkGeocode: false,
+    placeholder: "Buscar lugar...",
+    errorMessage: "No encontrado."
+})
+.on('markgeocode', e => {
+    handleMapInteraction(e.geocode.center, e.geocode.name);
+    map.setView(e.geocode.center, 14);
+})
 .addTo(map);
 
 // ==========================================
-// 2. ESTADO Y PERSISTENCIA
+// 2. ESTADO DE LA APLICACIÓN
 // ==========================================
 
 let appData = { stages: [], pois: [] };
 let stageRoutingControls = {}; 
 let activeStageId = null; 
+
+// Variables temporales para interacción
 let tempClickLocation = null;    
-let tempLocationName = "";
-let currentPoiEditId = null; 
+let tempLocationName = "";       
+
+// Cola de enrutamiento para no saturar la API
 let routingQueue = [];
 let isProcessingQueue = false;
 
-// Guardar en LocalStorage
-function saveData() {
-    localStorage.setItem('camperViaje', JSON.stringify(appData));
-}
-
-// Cargar datos
-function initApp() {
-    const hash = window.location.hash.substring(1); 
-    if (hash.startsWith('route=')) {
-        try {
-            const compressed = hash.substring(6);
-            const json = JSON.parse(LZString.decompressFromEncodedURIComponent(compressed));
-            if(json) {
-                loadAppData(json);
-                window.history.replaceState(null, null, ' '); 
-                return;
-            }
-        } catch (e) { console.error("Error loading URL", e); }
-    }
-
-    const local = localStorage.getItem('camperViaje');
-    if (local) {
-        loadAppData(JSON.parse(local));
-    }
-}
-
 // ==========================================
-// 3. INTERACCIÓN MAPA
+// 3. INTERACCIÓN (CLICS Y MODAL)
 // ==========================================
 
 map.on('click', e => handleMapInteraction(e.latlng));
 
-function handleMapInteraction(latlng, name = null) {
+function handleMapInteraction(latlng, preloadedName = null) {
     tempClickLocation = latlng;
     const modal = new bootstrap.Modal(document.getElementById('clickActionModal'));
     modal.show();
 
-    const preview = document.getElementById('modal-address-preview');
-    if (name) {
-        tempLocationName = name;
-        preview.innerHTML = `<strong>${name}</strong>`;
+    const previewText = document.getElementById('modal-address-preview');
+    
+    if (preloadedName) {
+        tempLocationName = preloadedName;
+        previewText.innerHTML = `<strong>${preloadedName}</strong>`;
     } else {
         tempLocationName = `${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)}`;
-        preview.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando dirección...';
+        previewText.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando dirección...';
         
-        geocoder.reverse(latlng, map.options.crs.scale(map.getZoom()), res => {
-            if (res && res.length > 0) {
-                tempLocationName = res[0].name;
-                if(document.getElementById('modal-address-preview'))
+        geocoder.reverse(latlng, map.options.crs.scale(map.getZoom()), results => {
+            if (results && results.length > 0) {
+                tempLocationName = results[0].name;
+                // Verificar si el elemento aún existe en el DOM por si cerraron el modal
+                if(document.getElementById('modal-address-preview')) {
                     document.getElementById('modal-address-preview').innerHTML = `<strong>${tempLocationName}</strong>`;
+                }
             } else {
-                if(document.getElementById('modal-address-preview'))
+                if(document.getElementById('modal-address-preview')) {
                     document.getElementById('modal-address-preview').innerText = tempLocationName;
+                }
             }
         });
     }
 }
 
+// Funciones expuestas al HTML (window)
 window.addCurrentLocToStage = function() {
-    if (!activeStageId) createNewStage();
+    if (!activeStageId) {
+        alert("Selecciona o crea una etapa primero.");
+        return;
+    }
     const stage = appData.stages.find(s => s.id === activeStageId);
-    stage.waypoints.push({ latLng: tempClickLocation, name: tempLocationName });
-    stage.visible = true;
-    refreshMapRoute(stage.id); 
-    renderSidebar();
-    saveData();
+    if(stage) {
+        stage.waypoints.push({ latLng: tempClickLocation, name: tempLocationName });
+        stage.visible = true; 
+        refreshMapRoute(stage.id); 
+        renderSidebar();
+    }
     bootstrap.Modal.getInstance(document.getElementById('clickActionModal')).hide();
 };
 
 window.addCurrentLocAsPOI = function() {
-    const newPoi = { id: Date.now(), latLng: tempClickLocation, name: tempLocationName, icon: "⭐" };
+    const newPoi = { id: Date.now(), latLng: tempClickLocation, name: tempLocationName };
     appData.pois.push(newPoi);
     renderPOIsOnMap();
-    renderPoiSidebar();
-    saveData();
     bootstrap.Modal.getInstance(document.getElementById('clickActionModal')).hide();
 };
 
@@ -142,465 +134,323 @@ window.createNewStage = function() {
         visible: true, 
         isOpen: true   
     });
-    activeStageId = id;
-    renderSidebar(); 
-    saveData();
+    setActiveStage(id); 
+    renderSidebar();
 };
 
 window.setActiveStage = function(id) {
-    if (activeStageId === id) return;
     activeStageId = id;
-    highlightActiveStageCard(id); 
-    saveData();
-};
-
-function highlightActiveStageCard(id) {
-    document.querySelectorAll('.accordion-item').forEach(el => {
-        el.classList.remove('border-primary', 'shadow-sm');
-        el.classList.add('border');
-    });
-    const activeCard = document.getElementById(`stage-card-${id}`);
-    if(activeCard) {
-        activeCard.classList.remove('border');
-        activeCard.classList.add('border-primary', 'shadow-sm');
-    }
-}
-
-window.toggleStageVisibility = function(e, id) {
-    e.stopPropagation();
-    const stage = appData.stages.find(s => s.id === id);
-    stage.visible = !stage.visible;
-    refreshMapRoute(id, true);
     renderSidebar(); 
-    saveData();
 };
 
-window.updateStageName = function(id, name) {
-    appData.stages.find(s => s.id === id).name = name;
-    saveData();
+window.toggleStageVisibility = function(event, id) {
+    event.stopPropagation(); 
+    const stage = appData.stages.find(s => s.id === id);
+    if(stage) {
+        stage.visible = !stage.visible;
+        refreshMapRoute(id, true);
+        renderSidebar();
+    }
 };
 
-window.updateStageColor = function(id, color) {
-    appData.stages.find(s => s.id === id).color = color;
-    refreshMapRoute(id, true);
-    saveData();
+window.updateStageColor = function(id, newColor) {
+    const stage = appData.stages.find(s => s.id === id);
+    if(stage) {
+        stage.color = newColor;
+        refreshMapRoute(id, true);
+    }
+};
+
+window.updateStageName = function(id, newName) {
+    const stage = appData.stages.find(s => s.id === id);
+    if(stage) stage.name = newName;
+};
+
+window.toggleAccordion = function(id) {
+    const stage = appData.stages.find(s => s.id === id);
+    if(stage) {
+        stage.isOpen = !stage.isOpen;
+        if (stage.isOpen) activeStageId = id;
+        renderSidebar();
+    }
 };
 
 window.deleteStage = function(id) {
-    if(!confirm("¿Borrar esta etapa?")) return;
-    if (stageRoutingControls[id]) { map.removeControl(stageRoutingControls[id]); delete stageRoutingControls[id]; }
+    if(!confirm("¿Borrar etapa?")) return;
+    if (stageRoutingControls[id]) {
+        map.removeControl(stageRoutingControls[id]);
+        delete stageRoutingControls[id];
+    }
     appData.stages = appData.stages.filter(s => s.id !== id);
     if (activeStageId === id) activeStageId = null;
     renderSidebar();
-    saveData();
 };
 
-window.removeWaypoint = function(stageId, idx) {
+window.removeWaypoint = function(stageId, index) {
     const stage = appData.stages.find(s => s.id === stageId);
-    stage.waypoints.splice(idx, 1);
-    refreshMapRoute(stageId);
-    renderSidebar();
-    saveData();
+    if(stage) {
+        stage.waypoints.splice(index, 1);
+        refreshMapRoute(stageId);
+        renderSidebar();
+    }
 };
 
 // ==========================================
-// 5. RENDERIZADO SIDEBAR (Etapas)
+// 5. RENDERIZADO DEL SIDEBAR
 // ==========================================
 
 function renderSidebar() {
     const container = document.getElementById('stages-list');
-    
-    const scrollTop = container.parentElement ? container.parentElement.scrollTop : 0;
-    
     container.innerHTML = '';
     let totalTripKm = 0;
 
     appData.stages.forEach((stage) => {
         if(stage.visible) totalTripKm += stage.distance;
         const isActive = stage.id === activeStageId;
-        const collapseId = `collapse-${stage.id}`; 
         
+        // Generar HTML de waypoints
         let waypointsHtml = stage.waypoints.length === 0 
             ? '<div class="text-muted small fst-italic p-2">Sin paradas.</div>'
-            : stage.waypoints.map((wp, idx) => `
-                <div class="waypoint-item small" data-index="${idx}">
-                    <span class="badge ${idx===0?'bg-success':idx===stage.waypoints.length-1?'bg-dark':'bg-secondary'} me-2">
-                        ${idx===0?'Inicio':idx===stage.waypoints.length-1?'Fin':idx}
-                    </span>
-                    <span class="text-truncate flex-grow-1 cursor-zoom" 
-                          onclick="map.setView([${wp.latLng.lat}, ${wp.latLng.lng}], 16)" 
-                          title="Ver en mapa">
-                        ${wp.name}
-                    </span>
-                    <button class="btn btn-link text-danger p-0 ms-2" onclick="removeWaypoint(${stage.id}, ${idx})"><i class="fas fa-times"></i></button>
-                </div>`).join('');
+            : stage.waypoints.map((wp, idx) => {
+                let badgeClass = (idx === 0) ? "bg-success" : (idx === stage.waypoints.length - 1) ? "bg-dark" : "bg-primary";
+                let label = (idx === 0) ? "Origen" : (idx === stage.waypoints.length - 1) ? "Destino" : "Parada";
+                return `
+                    <div class="waypoint-item small" data-index="${idx}">
+                        <div class="d-flex align-items-center overflow-hidden w-100">
+                            <span class="badge ${badgeClass} me-2" style="min-width:50px;">${label}</span>
+                            <span class="text-truncate">${wp.name}</span>
+                        </div>
+                        <button class="btn btn-link text-danger p-0 ms-2" onclick="removeWaypoint(${stage.id}, ${idx})">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>`;
+            }).join('');
 
         const card = document.createElement('div');
-        card.id = `stage-card-${stage.id}`;
-        card.className = `accordion-item mb-2 border ${isActive ? 'border-primary shadow-sm' : ''}`;
-        
+        card.className = `accordion-item mb-2 rounded overflow-hidden border ${isActive ? 'border-primary shadow-sm' : ''}`;
         card.innerHTML = `
-            <div class="accordion-header d-flex align-items-center border-bottom bg-light p-1" 
-                 onclick="setActiveStage(${stage.id})" 
-                 style="cursor: pointer;">
-                 
-                <button class="btn btn-sm text-secondary" onclick="toggleStageVisibility(event, ${stage.id})">
-                    <i class="fa-solid ${stage.visible ? 'fa-eye text-success' : 'fa-eye-slash'}"></i>
+            <div class="accordion-header d-flex align-items-center border-bottom bg-light">
+                <button class="btn-visibility ms-2 ${stage.visible ? 'active' : ''}" onclick="toggleStageVisibility(event, ${stage.id})">
+                    <i class="fa-solid ${stage.visible ? 'fa-eye' : 'fa-eye-slash'}"></i>
                 </button>
-                
-                <div class="color-picker-wrapper ms-2" onclick="event.stopPropagation()">
+                <div class="color-picker-wrapper ms-2">
                     <input type="color" class="color-picker-input" value="${stage.color}" oninput="updateStageColor(${stage.id}, this.value)">
                 </div>
-                
-                <div class="flex-grow-1 ms-2">
-                    <input type="text" class="form-control form-control-sm fw-bold border-0 bg-transparent p-0" 
-                           value="${stage.name}" 
-                           onclick="setActiveStage(${stage.id})" 
-                           onchange="updateStageName(${stage.id}, this.value)">
+                <div class="accordion-button-custom ${stage.isOpen ? '' : 'collapsed'} flex-grow-1" role="button" onclick="toggleAccordion(${stage.id})">
+                    <input type="text" class="stage-name-input" value="${stage.name}" onclick="event.stopPropagation()" onchange="updateStageName(${stage.id}, this.value)">
+                    <span class="badge bg-secondary ms-auto small" id="km-badge-${stage.id}">${(stage.distance).toFixed(1)} km</span>
+                    <i class="fa-solid fa-chevron-down ms-2 transition-icon" style="transform: ${stage.isOpen ? 'rotate(180deg)' : 'rotate(0)'}"></i>
                 </div>
-                
-                <span class="badge bg-light text-dark border ms-2">${stage.distance.toFixed(1)} km</span>
-                
-                <button class="btn btn-link text-dark p-0 ms-2 me-2 accordion-button-custom ${stage.isOpen ? '' : 'collapsed'}" 
-                        type="button"
-                        data-bs-toggle="collapse" 
-                        data-bs-target="#${collapseId}"
-                        onclick="event.stopPropagation()">
-                    <i class="fa-solid fa-chevron-down transition-icon"></i>
-                </button>
             </div>
-            
-            <div id="${collapseId}" class="accordion-collapse collapse ${stage.isOpen ? 'show' : ''}">
+            <div class="accordion-collapse collapse ${stage.isOpen ? 'show' : ''}">
                 <div class="accordion-body p-2 bg-white">
-                    <div id="wp-list-${stage.id}" class="list-group mb-2">${waypointsHtml}</div>
-                    <div class="d-flex justify-content-end gap-2">
-                         <button class="btn btn-sm btn-outline-danger" onclick="deleteStage(${stage.id})"><i class="fas fa-trash"></i></button>
+                    <div id="waypoints-list-${stage.id}" class="list-group mb-3">${waypointsHtml}</div>
+                    <div class="d-flex justify-content-end">
+                        ${!isActive ? `<button class="btn btn-sm btn-outline-primary me-2" onclick="setActiveStage(${stage.id})">Seleccionar</button>` : ''}
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteStage(${stage.id})"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
             </div>`;
         container.appendChild(card);
 
-        // Listeners para sincronizar estado sin repintar
-        const collapseElement = document.getElementById(collapseId);
-        
-        collapseElement.addEventListener('show.bs.collapse', () => {
-            stage.isOpen = true;
-            activeStageId = stage.id;
-            highlightActiveStageCard(stage.id);
-            saveData();
-        });
-        
-        collapseElement.addEventListener('hide.bs.collapse', () => {
-            stage.isOpen = false;
-            saveData();
-        });
-
-        if (stage.waypoints.length > 0) {
-            new Sortable(document.getElementById(`wp-list-${stage.id}`), {
+        // Activar Drag & Drop si está abierto
+        if (stage.isOpen && stage.waypoints.length > 0) {
+            new Sortable(document.getElementById(`waypoints-list-${stage.id}`), {
                 animation: 150,
                 onEnd: function (evt) {
                     const movedItem = stage.waypoints.splice(evt.oldIndex, 1)[0];
                     stage.waypoints.splice(evt.newIndex, 0, movedItem);
                     refreshMapRoute(stage.id);
                     renderSidebar();
-                    saveData();
                 }
             });
         }
     });
-    
     document.getElementById('total-km').innerText = totalTripKm.toFixed(1) + " km";
-    if(container.parentElement) container.parentElement.scrollTop = scrollTop;
 }
 
 // ==========================================
-// 6. GESTIÓN DE POIS (IMÁGENES Y EMOJIS)
+// 6. LÓGICA DE RUTAS (CONECTADO AL NUEVO ADAPTER)
 // ==========================================
 
-// Helper: Distingue si es Emoji (texto) o Ruta de Archivo/URL
-function getIconHtml(icon) {
-    // Si la cadena contiene un punto (.), una barra (/), o es muy larga, asumimos que es una ruta/URL
-    if (icon && (icon.includes('.') || icon.includes('/'))) {
-        return `<img src="${icon}" class="poi-sticker-img" alt="POI">`;
-    } else {
-        // De lo contrario, lo tratamos como un emoji de texto
-        return `<span class="poi-sticker-text">${icon || '⭐'}</span>`;
-    }
-}
-
-function renderPoiSidebar() {
-    const container = document.getElementById('pois-sidebar-list');
-    const msg = document.getElementById('no-pois-msg');
-    container.innerHTML = '';
-    
-    if (appData.pois.length === 0) {
-        msg.classList.remove('d-none');
-    } else {
-        msg.classList.add('d-none');
-        appData.pois.forEach(poi => {
-            const item = document.createElement('div');
-            item.className = 'list-group-item list-group-item-action d-flex align-items-center justify-content-between p-2';
-            
-            item.innerHTML = `
-                <div class="d-flex align-items-center flex-grow-1 overflow-hidden me-2">
-                    <span class="fs-4 me-2" style="cursor:pointer;" onclick="focusOnPoi(${poi.id})">
-                        ${getIconHtml(poi.icon)}
-                    </span>
-                    
-                    <input type="text" class="poi-name-input" 
-                           value="${poi.name}" 
-                           onchange="updatePoiName(${poi.id}, this.value)"
-                           onclick="event.stopPropagation()">
-                </div>
-                
-                <div class="d-flex align-items-center">
-                    <button class="btn btn-sm btn-light text-primary me-1" title="Cambiar Icono" onclick="openStickerSelector(${poi.id})">
-                        <i class="fa-solid fa-icons"></i>
-                    </button>
-                    <button class="btn btn-sm btn-light text-danger" title="Borrar" onclick="deletePoi(${poi.id})">
-                        <i class="fa-solid fa-times"></i>
-                    </button>
-                </div>
-            `;
-            
-            item.addEventListener('mouseenter', () => highlightMarker(poi.id, true));
-            item.addEventListener('mouseleave', () => highlightMarker(poi.id, false));
-            container.appendChild(item);
-        });
-    }
-}
-
-window.updatePoiName = function(id, newName) {
-    const poi = appData.pois.find(p => p.id === id);
-    if(poi) {
-        poi.name = newName;
-        saveData();
-        renderPOIsOnMap(); 
-    }
-};
-
-function renderPOIsOnMap() {
-    poiLayerGroup.clearLayers();
-    appData.pois.forEach(poi => {
-        const iconHtmlContent = getIconHtml(poi.icon);
-
-        const marker = L.marker(poi.latLng, {
-            icon: L.divIcon({
-                className: 'custom-poi-icon',
-                html: `<div class="poi-sticker shadow-sm">${iconHtmlContent}</div>`,
-                iconSize: [40, 40],
-                iconAnchor: [20, 40],
-                popupAnchor: [0, -40]
-            })
-        });
-
-        marker.on('click', () => {
-            map.setView(poi.latLng, 16); 
-        });
-        marker.on('mouseover', function() { this._icon.classList.add('marker-hover'); });
-        marker.on('mouseout', function() { this._icon.classList.remove('marker-hover'); });
-
-        marker.bindPopup(`
-            <div class="text-center">
-                <h6>${poi.name}</h6>
-                <div class="btn-group btn-group-sm">
-                    <button class="btn btn-primary" onclick="convertPoiToStop(${poi.id})">Añadir a Ruta</button>
-                    <button class="btn btn-outline-secondary" onclick="openStickerSelector(${poi.id})">Icono</button>
-                </div>
-            </div>
-        `);
-
-        marker.poiId = poi.id; 
-        marker.addTo(poiLayerGroup);
-    });
-}
-
-window.focusOnPoi = function(id) {
-    const poi = appData.pois.find(p => p.id === id);
-    if(poi) {
-        map.setView(poi.latLng, 16);
-        poiLayerGroup.eachLayer(layer => {
-            if(layer.poiId === id) layer.openPopup();
-        });
-    }
-};
-
-window.deletePoi = function(id) {
-    if(!confirm("¿Eliminar este punto?")) return;
-    appData.pois = appData.pois.filter(p => p.id !== id);
-    renderPOIsOnMap();
-    renderPoiSidebar();
-    saveData();
-};
-
-window.openStickerSelector = function(id) {
-    currentPoiEditId = id;
-    const grid = document.getElementById('sticker-grid');
-    if (typeof STICKERS === 'undefined') {
-        console.error("Falta js/stickers.js");
-        grid.innerHTML = "<p class='text-danger'>Error: stickers.js no cargado</p>";
-        return;
-    }
-
-    grid.innerHTML = STICKERS.map(s => {
-        const content = getIconHtml(s);
-        return `<button class="btn btn-outline-light border shadow-sm fs-4 p-2" onclick="selectSticker('${s}')" style="line-height:1; min-height:50px; min-width:50px;">${content}</button>`;
-    }).join('');
-    new bootstrap.Modal(document.getElementById('stickerModal')).show();
-};
-
-window.selectSticker = function(sticker) {
-    if(currentPoiEditId) {
-        const poi = appData.pois.find(p => p.id === currentPoiEditId);
-        if(poi) {
-            poi.icon = sticker;
-            renderPOIsOnMap();
-            renderPoiSidebar();
-            saveData();
-        }
-    }
-    bootstrap.Modal.getInstance(document.getElementById('stickerModal')).hide();
-};
-
-// ==========================================
-// 7. UTILIDADES
-// ==========================================
-
-function highlightMarker(id, isActive) {
-    poiLayerGroup.eachLayer(layer => {
-        if(layer.poiId === id) {
-            if(isActive) layer._icon.classList.add('marker-hover');
-            else layer._icon.classList.remove('marker-hover');
-        }
-    });
-}
-
-window.convertPoiToStop = function(id) {
-    if (!activeStageId) { alert("Selecciona una etapa primero"); return; }
-    const poi = appData.pois.find(p => p.id === id);
-    const stage = appData.stages.find(s => s.id === activeStageId);
-    stage.waypoints.push({ latLng: poi.latLng, name: poi.name });
-    refreshMapRoute(activeStageId); 
-    renderSidebar();
-    saveData();
-    map.closePopup();
-};
-
-window.resetAllData = function() {
-    if(confirm("¿Estás seguro de BORRAR TODO el viaje? No se puede deshacer.")) {
-        localStorage.removeItem('camperViaje');
-        location.reload();
-    }
-};
-
-window.generateShareLink = function() {
-    const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(appData));
-    const url = window.location.origin + window.location.pathname + '#route=' + compressed;
-    navigator.clipboard.writeText(url).then(() => alert("✅ ¡Enlace copiado! Puedes compartirlo."));
-};
-
-function loadAppData(json) {
-    Object.values(stageRoutingControls).forEach(c => map.removeControl(c));
-    stageRoutingControls = {};
-    routingQueue = []; 
-    
-    appData = json;
-    renderPOIsOnMap(); 
-    renderPoiSidebar(); 
-    appData.stages.forEach(s => { 
-        if(s.visible && s.waypoints.length >= 2) refreshMapRoute(s.id); 
-    });
-    renderSidebar();
-}
-
-function getRandomColor() { return '#' + Math.floor(Math.random()*16777215).toString(16); }
-
-// ==========================================
-// 8. RUTAS (MOTOR DE ENRUTAMIENTO)
-// ==========================================
-
-function refreshMapRoute(stageId, skipSidebar = false) {
+function refreshMapRoute(stageId, skipSidebarUpdate = false) {
     if (!routingQueue.some(item => item.stageId === stageId)) {
-        routingQueue.push({ stageId, skipSidebar });
+        routingQueue.push({ stageId, skipSidebarUpdate });
     }
     processRoutingQueue();
 }
 
 async function processRoutingQueue() {
     if (isProcessingQueue || routingQueue.length === 0) return;
+
     isProcessingQueue = true;
-    const { stageId, skipSidebar } = routingQueue.shift();
+    const { stageId, skipSidebarUpdate } = routingQueue.shift();
     const stage = appData.stages.find(s => s.id === stageId);
 
+    // Limpieza de control anterior si existe
     if (stageRoutingControls[stageId]) { 
         map.removeControl(stageRoutingControls[stageId]); 
         delete stageRoutingControls[stageId]; 
     }
 
+    // Validaciones básicas
     if (!stage || !stage.visible || stage.waypoints.length < 2) {
         if (stage && stage.waypoints.length < 2) stage.distance = 0;
-        if (!skipSidebar) renderSidebar();
-        saveData();
+        if (!skipSidebarUpdate) renderSidebar();
         isProcessingQueue = false;
-        processRoutingQueue();
+        processRoutingQueue(); // Siguiente en la cola
         return;
     }
     
-    const ORSRouter = new L.Routing.openrouteserviceV2(ORS_API_KEY, { profile: 'driving-car' });
+    // Instanciar el nuevo router (sin base64, usando la Key directa)
+    const ORSRouter = new L.Routing.openrouteserviceV2(ORS_API_KEY, {
+        profile: 'driving-car'
+    });
 
     const control = L.Routing.control({
         router: ORSRouter,
         waypoints: stage.waypoints.map(w => w.latLng),
         routeWhileDragging: false, 
         show: false, 
-        addWaypoints: true,
+        addWaypoints: false,
         createMarker: (i, wp, nWps) => {
+            // Personalización de marcadores
             let iconClass = i === 0 ? 'fa-flag' : i === nWps - 1 ? 'fa-flag-checkered' : 'fa-map-pin';
-            const m = L.marker(wp.latLng, {
+            return L.marker(wp.latLng, {
                 draggable: true,
                 icon: L.divIcon({
                     className: 'custom-div-icon',
                     html: `<div class='marker-pin' style='background-color: ${stage.color};'><i class='fa-solid ${iconClass}'></i></div>`,
                     iconSize: [30, 42], iconAnchor: [15, 42], popupAnchor: [0, -38]
                 })
-            });
-            
-            m.on('dragend', (e) => { 
+            }).on('dragend', (e) => { 
                 stage.waypoints[i].latLng = e.target.getLatLng(); 
                 refreshMapRoute(stage.id); 
             });
-            
-            m.bindPopup(`<div class="text-center fw-bold">${stage.waypoints[i].name}</div>`);
-            
-            m.on('mouseover', function() { this._icon.classList.add('marker-hover'); });
-            m.on('mouseout', function() { this._icon.classList.remove('marker-hover'); });
-
-            return m;
         },
-        lineOptions: { styles: [{color: stage.color, opacity: 0.8, weight: 5}], addWaypoints: false }
+        lineOptions: { 
+            styles: [{color: stage.color, opacity: 0.8, weight: 5}],
+            addWaypoints: false 
+        }
     }).addTo(map);
 
     stageRoutingControls[stageId] = control;
 
     control.on('routesfound', (e) => {
+        // En ORS V2 distance viene en metros
         stage.distance = e.routes[0].summary.totalDistance / 1000;
-        saveData();
-        if (!skipSidebar) renderSidebar();
-        else {
+        
+        if (!skipSidebarUpdate) {
+            renderSidebar();
+        } else {
+            // Actualización ligera del DOM
             const badge = document.getElementById(`km-badge-${stage.id}`);
             if(badge) badge.innerText = stage.distance.toFixed(1) + " km";
+            
             const totalKm = appData.stages.reduce((acc, s) => acc + (s.visible ? s.distance : 0), 0);
             document.getElementById('total-km').innerText = totalKm.toFixed(1) + " km";
         }
-        setTimeout(() => { isProcessingQueue = false; processRoutingQueue(); }, 200); 
+        
+        // Dar un respiro a la API
+        setTimeout(() => {
+            isProcessingQueue = false;
+            processRoutingQueue();
+        }, 200); 
     });
 
     control.on('routingerror', (e) => {
-        console.warn(`Error ruta ${stageId}`, e);
+        console.warn(`Error routing etapa ${stageId}:`, e);
+        // No reintentamos infinitamente para evitar bucles si la API key falla
         isProcessingQueue = false;
         processRoutingQueue();
     });
 }
 
-// INICIAR
-initApp();
+// ==========================================
+// 7. COMPARTIR, EXPORTAR E IMPORTAR
+// ==========================================
+
+window.generateShareLink = function() {
+    const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(appData));
+    const url = window.location.origin + window.location.pathname + '#route=' + compressed;
+    navigator.clipboard.writeText(url).then(() => alert("✅ ¡Enlace copiado!"));
+};
+
+window.exportData = function() {
+    const a = document.createElement('a');
+    a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData));
+    a.download = "viaje.json"; a.click();
+};
+
+window.importData = function(input) {
+    if(!input.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = (e) => loadAppData(JSON.parse(e.target.result));
+    reader.readAsText(input.files[0]);
+};
+
+window.convertPoiToStop = function(id) {
+    if (!activeStageId) {
+        alert("Selecciona una etapa activa primero.");
+        return;
+    }
+    const poi = appData.pois.find(p => p.id === id);
+    const stage = appData.stages.find(s => s.id === activeStageId);
+    if(poi && stage) {
+        stage.waypoints.push({ latLng: poi.latLng, name: poi.name });
+        refreshMapRoute(activeStageId); 
+        renderSidebar(); 
+        map.closePopup();
+    }
+};
+
+function loadAppData(json) {
+    // Limpieza total
+    Object.values(stageRoutingControls).forEach(c => map.removeControl(c));
+    stageRoutingControls = {};
+    routingQueue = []; 
+    isProcessingQueue = false;
+    
+    appData = json;
+    
+    // Restaurar POIs
+    renderPOIsOnMap(); 
+    
+    // Restaurar rutas visibles
+    appData.stages.forEach(s => { 
+        if(s.visible && s.waypoints.length >= 2) refreshMapRoute(s.id); 
+    });
+    
+    renderSidebar();
+}
+
+function renderPOIsOnMap() {
+    poiLayerGroup.clearLayers();
+    appData.pois.forEach(poi => {
+        L.marker(poi.latLng, {
+            icon: L.divIcon({ className: 'custom-div-icon', html: `<div class='marker-pin marker-poi'><i class='fa-solid fa-star'></i></div>`, iconSize: [30, 42], iconAnchor: [15, 42] })
+        }).addTo(poiLayerGroup).bindPopup(`<h6>${poi.name}</h6><button class="btn btn-sm btn-primary" onclick="convertPoiToStop(${poi.id})">Añadir a Etapa</button>`);
+    });
+}
+
+function getRandomColor() { return '#' + Math.floor(Math.random()*16777215).toString(16); }
+
+// Carga inicial desde URL si existe
+function checkForSharedUrl() {
+    const hash = window.location.hash.substring(1); 
+    if (hash.startsWith('route=')) {
+        try {
+            const compressed = hash.substring(6);
+            const jsonString = LZString.decompressFromEncodedURIComponent(compressed);
+            if (jsonString) {
+                loadAppData(JSON.parse(jsonString)); 
+                history.replaceState(null, null, ' '); 
+            }
+        } catch (error) {
+            console.error("Error al cargar URL compartida:", error);
+        }
+    }
+}
+
+// Iniciar
+checkForSharedUrl();
