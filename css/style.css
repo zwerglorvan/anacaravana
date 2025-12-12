@@ -137,6 +137,16 @@ html, body {
 
 /* ========================================================= */
 
+.leaflet-control-layers {
+    margin-top: 10px;
+    margin-right: 10px;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+    border-radius: 5px;
+}
+
+.leaflet-control-layers-expanded {
+    padding: 6px 10px 6px 6px;
+}
 
 /* Ocultar el panel de instrucciones por defecto de Leaflet Routing Machine */
 .leaflet-routing-container {

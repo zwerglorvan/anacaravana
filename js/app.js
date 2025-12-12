@@ -1,21 +1,45 @@
 /**
- * APP.JS - Planificador de Viajes en Autocaravana (Versión Sofisticada)
+ * APP.JS - Planificador de Viajes en Autocaravana
  * -----------------------------------------------
  */
 
 // ==========================================
-// 1. INICIALIZACIÓN
+// 1. INICIALIZACIÓN DEL MAPA Y CAPAS
 // ==========================================
 
-var map = L.map('map').setView([40.416775, -3.703790], 6);
-
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+// Definición de capas base (Mapas)
+var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors'
-}).addTo(map);
+});
 
+var satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+});
+
+var terrain = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+    attribution: 'Map data: &copy; OpenStreetMap contributors, SRTM | Map style: &copy; OpenTopoMap (CC-BY-SA)'
+});
+
+// Inicializar el mapa con la capa de carreteras por defecto
+var map = L.map('map', {
+    center: [40.416775, -3.703790],
+    zoom: 6,
+    layers: [osm] // Capa inicial
+});
+
+// Crear selector de capas
+var baseMaps = {
+    "Carreteras": osm,
+    "Satélite": satellite,
+    "Relieve": terrain
+};
+L.control.layers(baseMaps).addTo(map);
+
+
+// Capa para los Puntos de Interés (POIs) independientes
 var poiLayerGroup = L.layerGroup().addTo(map);
 
-// Buscador
+// Inicializar el Buscador (Geocoder)
 var geocoder = L.Control.Geocoder.nominatim();
 L.Control.geocoder({
     geocoder: geocoder,
@@ -32,22 +56,25 @@ L.Control.geocoder({
 .addTo(map);
 
 
-// ESTADO DE LA APLICACIÓN
+// ==========================================
+// 2. ESTADO DE LA APLICACIÓN
+// ==========================================
+
 let appData = {
     stages: [], 
     pois: []    
 };
 
-// **CAMBIO IMPORTANTE**: Diccionario para guardar los controles de ruta de cada etapa individualmente
+// Diccionario para controlar las rutas de cada etapa independientemente
 let stageRoutingControls = {}; 
 
-let activeStageId = null; // ID de la etapa "seleccionada" para añadir puntos
+let activeStageId = null; // ID de la etapa seleccionada para añadir puntos
 let tempClickLocation = null;    
 let tempLocationName = "";       
 
 
 // ==========================================
-// 2. INTERACCIÓN (CLICS Y MODAL)
+// 3. INTERACCIÓN (CLICS Y MODAL)
 // ==========================================
 
 map.on('click', function(e) {
@@ -56,6 +83,7 @@ map.on('click', function(e) {
 
 function handleMapInteraction(latlng, preloadedName = null) {
     tempClickLocation = latlng;
+    
     var modalElement = document.getElementById('clickActionModal');
     var modal = new bootstrap.Modal(modalElement);
     modal.show();
@@ -66,16 +94,34 @@ function handleMapInteraction(latlng, preloadedName = null) {
         tempLocationName = preloadedName;
         previewText.innerHTML = `<strong>${preloadedName}</strong>`;
     } else {
+        // Asignar nombre por defecto inmediatamente (Coordenadas)
+        tempLocationName = `Coordenadas: ${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)}`;
         previewText.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando dirección...';
+        
+        let geocodeDone = false;
+
+        // Búsqueda inversa estándar (usando el zoom actual como referencia)
         geocoder.reverse(latlng, map.options.crs.scale(map.getZoom()), function(results) {
+            geocodeDone = true;
             if (results && results.length > 0) {
                 tempLocationName = results[0].name;
-                previewText.innerHTML = `<strong>${tempLocationName}</strong>`;
+                let currentPreview = document.getElementById('modal-address-preview');
+                if(currentPreview) currentPreview.innerHTML = `<strong>${tempLocationName}</strong>`;
             } else {
-                tempLocationName = `Coordenadas: ${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)}`;
-                previewText.innerHTML = tempLocationName;
+                let currentPreview = document.getElementById('modal-address-preview');
+                if(currentPreview) currentPreview.innerHTML = `<span class="text-muted">${tempLocationName}</span>`;
             }
         });
+
+        // Timeout de seguridad: Si en 3 seg no responde, nos quedamos con las coordenadas
+        setTimeout(() => {
+            if (!geocodeDone) {
+                let currentPreview = document.getElementById('modal-address-preview');
+                if(currentPreview && currentPreview.innerHTML.includes('fa-spinner')) {
+                    currentPreview.innerHTML = `<span class="text-muted">${tempLocationName}</span> <br><small class='text-danger'>(Dirección no encontrada)</small>`;
+                }
+            }
+        }, 3000);
     }
 }
 
@@ -87,10 +133,8 @@ function addCurrentLocToStage() {
     const stage = appData.stages.find(s => s.id === activeStageId);
     stage.waypoints.push({ latLng: tempClickLocation, name: tempLocationName });
     
-    // Aseguramos que sea visible si añadimos puntos
     stage.visible = true; 
-
-    refreshMapRoute(stage.id);
+    refreshMapRoute(stage.id); 
     renderSidebar();
     
     var modalEl = document.getElementById('clickActionModal');
@@ -109,7 +153,7 @@ function addCurrentLocAsPOI() {
 
 
 // ==========================================
-// 3. GESTIÓN DE ETAPAS (SIDEBAR SOFISTICADO)
+// 4. GESTIÓN DE ETAPAS
 // ==========================================
 
 function createNewStage() {
@@ -120,66 +164,62 @@ function createNewStage() {
         waypoints: [],
         distance: 0,
         color: getRandomColor(),
-        visible: true, // Por defecto visible
-        isOpen: true   // Por defecto desplegada en el acordeón
+        visible: true, 
+        isOpen: true   
     };
     appData.stages.push(newStage);
-    setActiveStage(id); // La marcamos como activa para trabajar
+    setActiveStage(id); 
     renderSidebar();
 }
 
-// Función para establecer qué etapa recibe los nuevos puntos (borde azul)
 function setActiveStage(id) {
     activeStageId = id;
-    renderSidebar(); // Re-render para actualizar bordes y estilos
+    renderSidebar(); 
 }
 
-// Alternar visibilidad en el mapa (OJO)
 function toggleStageVisibility(event, id) {
-    event.stopPropagation(); // Evitar que se cierre el acordeón
+    event.stopPropagation(); 
     const stage = appData.stages.find(s => s.id === id);
     stage.visible = !stage.visible;
-    refreshMapRoute(id); // Actualizar solo mapa
-    renderSidebar();     // Actualizar icono ojo
+    refreshMapRoute(id, true); // true = No redibujar sidebar completo
+    
+    // Actualizar icono visualmente
+    const btn = event.currentTarget;
+    if(stage.visible) {
+        btn.classList.add('active');
+        btn.innerHTML = '<i class="fa-solid fa-eye"></i>';
+    } else {
+        btn.classList.remove('active');
+        btn.innerHTML = '<i class="fa-solid fa-eye-slash"></i>';
+    }
 }
 
-// Actualizar color
 function updateStageColor(id, newColor) {
     const stage = appData.stages.find(s => s.id === id);
     stage.color = newColor;
-    refreshMapRoute(id); // Repintar ruta con nuevo color
+    refreshMapRoute(id, true); // true = No redibujar sidebar para no cerrar el picker
 }
 
-// Actualizar nombre
 function updateStageName(id, newName) {
     const stage = appData.stages.find(s => s.id === id);
     stage.name = newName;
-    // No hace falta repintar mapa, solo actualizar datos. 
-    // Como es un input, el valor ya se ve en pantalla.
 }
 
-// Controlar apertura/cierre acordeón para guardar estado
 function toggleAccordion(id) {
     const stage = appData.stages.find(s => s.id === id);
     stage.isOpen = !stage.isOpen;
-    // Si abrimos el acordeón, también la hacemos la etapa "activa" para editar
-    if (stage.isOpen) {
-        activeStageId = id;
-    }
+    if (stage.isOpen) activeStageId = id;
     renderSidebar();
 }
-
 
 function deleteStage(id) {
     if(!confirm("¿Borrar etapa y su ruta?")) return;
     
-    // 1. Eliminar del mapa
     if (stageRoutingControls[id]) {
         map.removeControl(stageRoutingControls[id]);
         delete stageRoutingControls[id];
     }
 
-    // 2. Eliminar de datos
     appData.stages = appData.stages.filter(s => s.id !== id);
     if (activeStageId === id) activeStageId = null;
     
@@ -193,7 +233,11 @@ function removeWaypoint(stageId, index) {
     renderSidebar();
 }
 
-// RENDERIZADO DEL SIDEBAR
+
+// ==========================================
+// 5. RENDERIZADO DEL SIDEBAR
+// ==========================================
+
 function renderSidebar() {
     const container = document.getElementById('stages-list');
     container.innerHTML = '';
@@ -204,9 +248,9 @@ function renderSidebar() {
         if(stage.visible) totalTripKm += stage.distance;
         
         const isActive = stage.id === activeStageId;
-        const isOpen = stage.isOpen; // Usamos propiedad interna, no ID única
+        const isOpen = stage.isOpen; 
         
-        // Generar lista de paradas
+        // HTML de waypoints
         let waypointsHtml = '';
         if (stage.waypoints.length === 0) {
             waypointsHtml = '<div class="text-muted small fst-italic p-2">Sin paradas. Clic en mapa.</div>';
@@ -230,17 +274,14 @@ function renderSidebar() {
         }
 
         const card = document.createElement('div');
-        // Si es la activa, añadimos clase de borde
         card.className = `accordion-item mb-2 rounded overflow-hidden border ${isActive ? 'border-primary' : ''}`;
         
-        // HTML DE LA CABECERA (Aquí están los inputs, color y ojo)
-        // Nota: onclick="toggleAccordion" gestiona el despliegue manualmente para evitar conflictos de Bootstrap
         card.innerHTML = `
             <div class="accordion-header d-flex align-items-center border-bottom bg-light">
                 
                 <button class="btn-visibility ms-2 ${stage.visible ? 'active' : ''}" 
                         onclick="toggleStageVisibility(event, ${stage.id})" 
-                        title="${stage.visible ? 'Ocultar ruta' : 'Mostrar ruta'}">
+                        title="Ocultar/Mostrar">
                     <i class="fa-solid ${stage.visible ? 'fa-eye' : 'fa-eye-slash'}"></i>
                 </button>
 
@@ -256,7 +297,7 @@ function renderSidebar() {
                            onclick="event.stopPropagation()"
                            onchange="updateStageName(${stage.id}, this.value)">
                     
-                    <span class="badge bg-secondary ms-auto small">${(stage.distance).toFixed(1)} km</span>
+                    <span class="badge bg-secondary ms-auto small" id="km-badge-${stage.id}">${(stage.distance).toFixed(1)} km</span>
                     <i class="fa-solid fa-chevron-down ms-2 transition-icon" style="transform: ${isOpen ? 'rotate(180deg)' : 'rotate(0)'}"></i>
                 </div>
             </div>
@@ -273,7 +314,7 @@ function renderSidebar() {
                     </div>
 
                     <div class="d-flex justify-content-end">
-                         ${!isActive ? `<button class="btn btn-sm btn-outline-primary me-2" onclick="setActiveStage(${stage.id})">Seleccionar para editar</button>` : ''}
+                         ${!isActive ? `<button class="btn btn-sm btn-outline-primary me-2" onclick="setActiveStage(${stage.id})">Seleccionar</button>` : ''}
                         <button class="btn btn-sm btn-outline-danger" onclick="deleteStage(${stage.id})">
                             <i class="fas fa-trash"></i>
                         </button>
@@ -283,7 +324,6 @@ function renderSidebar() {
         `;
         container.appendChild(card);
 
-        // Drag & Drop
         if (isOpen) {
             const listContainer = document.getElementById(`waypoints-list-${stage.id}`);
             if(listContainer) {
@@ -306,27 +346,23 @@ function renderSidebar() {
 
 
 // ==========================================
-// 4. LÓGICA DE RUTAS (MÚLTIPLES INSTANCIAS)
+// 6. LÓGICA DE RUTAS Y MARCADORES
 // ==========================================
 
-function refreshMapRoute(stageId) {
+function refreshMapRoute(stageId, skipSidebarUpdate = false) {
     const stage = appData.stages.find(s => s.id === stageId);
     if (!stage) return;
 
-    // 1. Si ya existe un control para esta etapa, lo quitamos para repintar
     if (stageRoutingControls[stageId]) {
         map.removeControl(stageRoutingControls[stageId]);
         delete stageRoutingControls[stageId];
     }
 
-    // 2. Si la etapa está marcada como invisible, o tiene < 2 puntos, terminamos aquí
     if (!stage.visible || !stage.waypoints || stage.waypoints.length < 2) {
-        // Si acabamos de borrar puntos y nos quedamos con <2, distancia es 0
         if (stage.waypoints.length < 2) stage.distance = 0;
         return; 
     }
 
-    // 3. Crear control nuevo específico para esta etapa
     const waypointsCoords = stage.waypoints.map(w => w.latLng);
 
     const control = L.Routing.control({
@@ -336,23 +372,14 @@ function refreshMapRoute(stageId) {
         addWaypoints: false,
         
         createMarker: function(i, wp, nWps) {
-            // Personalización de marcadores (igual que antes pero con soporte de color dinámico si quisiéramos)
             let iconClass = 'fa-map-pin';
-            let cssClass = '';
+            if (i === 0) iconClass = 'fa-flag'; 
+            else if (i === nWps - 1) iconClass = 'fa-flag-checkered'; 
             
-            if (i === 0) { iconClass = 'fa-flag'; cssClass = 'marker-origin'; }
-            else if (i === nWps - 1) { iconClass = 'fa-flag-checkered'; cssClass = 'marker-dest'; }
-            else { 
-                // Podríamos usar el color de la etapa para el pin intermedio
-                // cssClass = 'marker-poi'; 
-            }
-
-            // Usamos un estilo especial para los pines intermedios basado en el color de la etapa?
-            // De momento mantengo tu estilo original para no complicar el CSS dinámico,
-            // pero el borde del marker se podría pintar con stage.color.
+            // Inyectamos el color de la etapa en el estilo del marcador
             const icon = L.divIcon({
                 className: 'custom-div-icon',
-                html: `<div class='marker-pin ${cssClass}' style='${!cssClass ? "background:"+stage.color : ""}'><i class='fa-solid ${iconClass}'></i></div>`,
+                html: `<div class='marker-pin' style='background-color: ${stage.color};'><i class='fa-solid ${iconClass}'></i></div>`,
                 iconSize: [30, 42],
                 iconAnchor: [15, 42],
                 popupAnchor: [0, -38]
@@ -363,7 +390,7 @@ function refreshMapRoute(stageId) {
             
             marker.on('dragend', function(e) {
                 stage.waypoints[i].latLng = e.target.getLatLng();
-                refreshMapRoute(stage.id);
+                refreshMapRoute(stage.id); 
             });
             return marker;
         },
@@ -372,7 +399,6 @@ function refreshMapRoute(stageId) {
         }
     }).addTo(map);
 
-    // Guardar referencia en el diccionario
     stageRoutingControls[stageId] = control;
 
     control.on('routesfound', function(e) {
@@ -380,9 +406,16 @@ function refreshMapRoute(stageId) {
         const summary = routes[0].summary;
         stage.distance = summary.totalDistance / 1000;
         
-        // Actualizar texto Km sin redibujar todo el sidebar para evitar perder foco si estamos editando
-        // (Aunque renderSidebar es rápido, podemos optimizar si fuera necesario)
-        renderSidebar(); 
+        if (!skipSidebarUpdate) {
+            renderSidebar(); 
+        } else {
+            // Actualización ligera si estamos editando color/visibilidad
+            let kmBadge = document.getElementById(`km-badge-${stage.id}`);
+            if(kmBadge) kmBadge.innerText = stage.distance.toFixed(1) + " km";
+            
+            let total = appData.stages.reduce((acc, s) => acc + (s.visible ? s.distance : 0), 0);
+            document.getElementById('total-km').innerText = total.toFixed(1) + " km";
+        }
     });
     
     control.on('routingerror', function(e) {
@@ -392,7 +425,7 @@ function refreshMapRoute(stageId) {
 
 
 // ==========================================
-// 5. POIS Y UTILIDADES
+// 7. POIS Y UTILIDADES
 // ==========================================
 
 function renderPOIsOnMap() {
@@ -451,15 +484,11 @@ function importData(input) {
     reader.onload = function(e) {
         try {
             appData = JSON.parse(e.target.result);
-            
-            // Limpiar mapa viejo
             Object.values(stageRoutingControls).forEach(c => map.removeControl(c));
             stageRoutingControls = {};
             activeStageId = null;
-
-            // Restaurar rutas visibles
             appData.stages.forEach(s => {
-                if(s.visible === undefined) s.visible = true; // compatibilidad
+                if(s.visible === undefined) s.visible = true; 
                 if(s.visible) refreshMapRoute(s.id);
             });
             renderPOIsOnMap();
