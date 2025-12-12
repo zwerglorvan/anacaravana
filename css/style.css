@@ -1,0 +1,94 @@
+html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden; /* Evita scroll doble */
+}
+
+#map {
+    height: 100vh;
+    width: 100%;
+    z-index: 1;
+}
+
+#sidebar {
+    height: 100vh;
+    z-index: 2;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+}
+
+/* Ajustes para la lista de paradas arrastrable */
+.waypoint-item {
+    cursor: grab;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    padding: 8px;
+    margin-bottom: 5px;
+    border-radius: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.waypoint-item:active {
+    cursor: grabbing;
+}
+
+/* Ocultar el panel de instrucciones por defecto de Leaflet Routing Machine */
+.leaflet-routing-container {
+    display: none !important; 
+}
+
+/* Responsive: En móvil el sidebar colapsa o cambia de altura */
+@media (max-width: 768px) {
+    #sidebar {
+        height: 40vh; /* Mapa arriba, panel abajo */
+        order: 2;
+    }
+    #map {
+        height: 60vh;
+        order: 1;
+    }
+    .row {
+        flex-direction: column;
+    }
+}
+
+/* Iconos personalizados en el mapa */
+.custom-div-icon {
+    background: transparent;
+    border: none;
+}
+
+.marker-pin {
+    width: 30px;
+    height: 30px;
+    border-radius: 50% 50% 50% 0;
+    background: #3098F3; /* Azul por defecto */
+    position: absolute;
+    transform: rotate(-45deg);
+    left: 50%;
+    top: 50%;
+    margin: -15px 0 0 -15px;
+    box-shadow: 2px 3px 5px rgba(0,0,0,0.3);
+    text-align: center;
+    line-height: 30px;
+}
+
+/* Icono interior rotado para que se vea recto */
+.marker-pin i {
+    transform: rotate(45deg); 
+    color: white;
+    font-size: 14px;
+    margin-top: 3px; /* Ajuste fino */
+    margin-left: 2px;
+}
+
+/* Colores específicos */
+.marker-origin { background: #198754; } /* Verde - Bootstrap Success */
+.marker-dest { background: #000; } /* Negro - Meta */
+.marker-poi { background: #ffc107; } /* Amarillo - Warning */
+
+/* Ajuste buscador */
+.leaflet-control-geocoder {
+    z-index: 999;
+}

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nuestro Viaje en Autocaravana 🚐</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+    
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="container-fluid p-0 h-100">
+    <div class="row g-0 h-100">
+        
+        <div class="col-md-4 col-lg-3 d-flex flex-column bg-light border-end" id="sidebar">
+            <div class="p-3 bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="m-0"><i class="fa-solid fa-route"></i> Planificador</h5>
+                <div>
+                    <button class="btn btn-sm btn-outline-light" onclick="exportData()" title="Guardar Viaje"><i class="fa-solid fa-download"></i></button>
+                    <label class="btn btn-sm btn-outline-light mb-0" title="Cargar Viaje">
+                        <i class="fa-solid fa-upload"></i> <input type="file" id="importFile" hidden onchange="importData(this)">
+                    </label>
+                </div>
+            </div>
+
+            <div class="flex-grow-1 overflow-auto p-3" id="stages-container">
+                <h6 class="text-muted text-uppercase small">Etapas del Viaje</h6>
+                <div id="stages-list" class="accordion">
+                    </div>
+                <button class="btn btn-outline-primary w-100 mt-3" onclick="createNewStage()">
+                    <i class="fa-solid fa-plus"></i> Nueva Etapa
+                </button>
+            </div>
+
+            <div class="p-3 bg-white border-top">
+                <div class="d-flex justify-content-between">
+                    <strong>Total Kilómetros:</strong>
+                    <span id="total-km">0 km</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8 col-lg-9 position-relative">
+            <div id="map"></div>
+            
+            <div id="search-overlay" class="position-absolute top-0 start-50 translate-middle-x mt-3 bg-white p-2 rounded shadow d-none">
+                <small>Haz clic en el mapa para añadir puntos</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="clickActionModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">¿Qué quieres añadir aquí?</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body text-center">
+        <p id="modal-address-preview" class="text-muted small">Cargando dirección...</p>
+        <div class="d-grid gap-2">
+            <button class="btn btn-primary" onclick="addCurrentLocToStage()">
+                <i class="fa-solid fa-route"></i> Añadir a la Etapa Activa
+            </button>
+            <button class="btn btn-success" onclick="addCurrentLocAsPOI()">
+                <i class="fa-solid fa-star"></i> Crear Punto de Interés (POI)
+            </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+<script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>
