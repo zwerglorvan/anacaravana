@@ -245,47 +245,71 @@ html, body {
 .accordion-button-custom:not(.collapsed) .transition-icon { transform: rotate(180deg); }
 
 /* --- FIX DE ANCHO INTERMEDIO (TABLET/DESKTOP PEQUEÑO) --- */
-/* Cuando el sidebar es estrecho (col-md-4/col-lg-3) pero no móvil */
 @media (min-width: 768px) and (max-width: 1200px) {
     .header-synthwave h4 {
-        font-size: 1.1rem; /* Reducimos fuente para que quepa mejor */
+        font-size: 1.1rem; 
     }
     .header-synthwave h4 i {
         font-size: 0.9em;
     }
     .header-synthwave .btn {
-        padding: 0.25rem 0.4rem; /* Botones un poco más compactos */
+        padding: 0.25rem 0.4rem; 
     }
 }
 
 /* --- RESPONSIVE FIXES PARA MÓVIL --- */
-@media (max-width: 576px) {
-    /* Reducimos el padding del contenedor de la cabecera */
-    .header-synthwave {
-        padding: 0.5rem !important; /* Menos espacio alrededor */
+@media (max-width: 768px) {
+    .row { 
+        flex-direction: column; 
     }
 
-    /* Ajustamos el tamaño del título principal */
-    .header-synthwave h4 {
-        font-size: 1.1rem !important; /* Más pequeño */
-        letter-spacing: 1px !important; /* Juntamos un poco las letras */
+    /* 1. SIDEBAR: Abajo, 40% de altura */
+    #sidebar { 
+        height: 40% !important; 
+        order: 2; 
+        border-top: 2px solid var(--neon-pink);
+        background-color: var(--dark-bg); 
+        background-image: linear-gradient(180deg, var(--dark-bg) 0%, #1a0b2e 100%);
+        color: #fff;
+        z-index: 1050; /* Aseguramos que quede por encima si hay solapamiento */
     }
-    
-    /* El icono del cohete un poco más pequeño */
+
+    /* 2. CONTENEDOR DEL MAPA: Arriba, 60% de altura */
+    #map-container {
+        height: 60% !important; 
+        order: 1;
+        width: 100%;
+        display: block; /* Asegurar comportamiento de bloque */
+    }
+
+    /* 3. MAPA INTERNO: Llena el contenedor */
+    #map { 
+        height: 100% !important; /* Importante: reseteamos el 100vh global */
+        width: 100%;
+    }
+
+    /* Ajustes de cabecera (sin cambios) */
+    .header-synthwave {
+        padding: 0.5rem !important;
+        flex-shrink: 0;
+    }
+    .header-synthwave h4 {
+        font-size: 1.1rem !important;
+        letter-spacing: 1px !important;
+    }
     .header-synthwave h4 i {
         font-size: 0.9em;
-        margin-right: 4px !important; /* Menos margen con el texto */
+        margin-right: 4px !important;
     }
-
-    /* El "v1.1" más discreto */
     .header-synthwave small {
         font-size: 0.7rem !important;
         margin-left: 4px !important;
     }
-
-    /* Los botones de la derecha más compactos */
     .header-synthwave .btn {
-        padding: 2px 6px !important; /* Botones más finos */
+        padding: 2px 6px !important;
         font-size: 0.8rem !important;
+    }
+    .footer-synthwave {
+        flex-shrink: 0;
     }
 }

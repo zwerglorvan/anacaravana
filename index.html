@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Anacaravana 🚐⚡</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -42,7 +42,7 @@
                 </div>
             </div>
 
-            <div class="flex-grow-1 overflow-auto p-3" id="sidebar-content">
+            <div class="flex-grow-1 overflow-auto p-3" id="sidebar-content" style="min-height: 0;">
                 <h6 class="text-cyan text-uppercase small fw-bold mb-2 border-bottom border-cyan pb-1">
                     <i class="fa-solid fa-road"></i> Itinerario
                 </h6>
@@ -70,7 +70,7 @@
             </div>
         </div>
 
-        <div class="col-md-8 col-lg-9 position-relative bg-black">
+        <div class="col-md-8 col-lg-9 position-relative bg-black" id="map-container">
             <div class="crt-overlay pointer-events-none"></div>
             <div id="map" class="map-synthwave"></div>
             
